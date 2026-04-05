@@ -26,10 +26,8 @@
 	    nixpkgs.overlays = [ comfyui-nix.overlays.default ];
 	    #environment.systemPackages = [ nixpkgs.comfy-ui-cuda ];
           }
-          ({ pkgs, ... }: {
-            services.monado.package = pkgs.monado.overrideAttrs (_: {
-              src = monado-local;
-            });
+          ({ ... }: {
+            services.monado.package = monado-local.packages.x86_64-linux.default;
           })
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
