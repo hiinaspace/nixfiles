@@ -178,6 +178,9 @@
   # Without this, Proton can't see Monado's active_runtime.json.
   # https://lvra.gitlab.io/docs/fossvr/xrizer/
   environment.sessionVariables.PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES = "1";
+  # Expose /nix store paths inside pressure-vessel so that openvrpaths.vrpath
+  # (which references xrizer's nix store path) can be resolved by Proton.
+  environment.sessionVariables.PRESSURE_VESSEL_FILESYSTEMS_RO = "/nix:/run/current-system";
 
   nixpkgs.config.allowUnfree = true;
   # List packages installed in system profile.
