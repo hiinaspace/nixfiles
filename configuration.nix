@@ -104,6 +104,12 @@
       # https://lvra.gitlab.io/docs/vrchat/video_players/
       proton-ge-rtsp-bin
     ];
+    # Expose the host OpenXR runtime inside Steam's pressure-vessel sandbox.
+    # Without this, Proton can't see Monado's active_runtime.json.
+    # https://lvra.gitlab.io/docs/fossvr/xrizer/
+    extraProfile = ''
+      export PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1
+    '';
   };
   
   # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/vr/vr.nix#L34
@@ -188,7 +194,10 @@
     #factorio-space-age
     pavucontrol
     usbutils # lsusb
-    # for OpenVR API on top of monado
+    # OpenVR → OpenXR bridge for games like VRChat
+    # https://lvra.gitlab.io/docs/fossvr/xrizer/
+    xrizer
+    # (opencomposite kept as fallback)
     opencomposite
     # vr overlay thing
     wayvr
