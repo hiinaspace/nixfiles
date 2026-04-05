@@ -74,7 +74,7 @@
   hardware.nvidia = {
     # copying from 
     # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/graphics/nvidia.nix#L4
-    open = false; # open true is buggy apparently
+    open = true; # required for BSB2 DSC display fix
     modesetting.enable = true;
     powerManagement.enable = false;
     powerManagement.finegrained = false;
@@ -82,10 +82,20 @@
     nvidiaSettings = true;
  
     # https://nixos.wiki/wiki/Nvidia
-    package = config.boot.kernelPackages.nvidiaPackages.latest;
+    # Override to add BSB2 DSC fix patch (https://github.com/triple-groove/nvidia-bsb-dsc-fix)
+    package =
+      let base = config.boot.kernelPackages.nvidiaPackages.latest;
+      in base // {
+        open = base.open.overrideAttrs (old: {
+          patches = (old.patches or []) ++ [ ./bsb-dsc-fix.patch ];
+        });
+      };
   };
-  # apparently some wayland nvidia thing?
-  boot.kernelParams = ["nvidia_drm.fbdev=1"];
+  # NVIDIA direct mode quirks for wired VR on Wayland.
+  boot.kernelParams = [
+    "nvidia_drm.fbdev=1"
+    "nvidia-modeset.conceal_vrr_caps=1"
+  ];
 
   programs.steam = {
     enable = true;
@@ -97,10 +107,12 @@
   };
   
   # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/vr/vr.nix#L34
-  # Beyond udev rule
+  # Bigscreen Beyond udev rules (all interfaces: HMD, Bigeye, audio strap, firmware mode)
   services.udev.extraRules = ''
-    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="0101", MODE="0666", GROUP="video"
-    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="0202", MODE="0666", GROUP="video"
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="0101", MODE="0660", GROUP="video"
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="0202", MODE="0660", GROUP="video"
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="0105", MODE="0660", GROUP="video"
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="35bd", ATTRS{idProduct}=="4004", MODE="0660", GROUP="video"
   '';
 
   # https://lvra.gitlab.io/docs/hardware/#applying-a-kernel-patch-for-vive-pro-2-bigscreen-beyond-pimax
@@ -115,15 +127,29 @@
   # https://wiki.nixos.org/wiki/VR
   services.monado = {
     enable = true;
-    defaultRuntime = true; # Register as default OpenXR runtime
+    defaultRuntime = false; # Keep Monado available, but do not own active_runtime.json
+    highPriority = true;   # CAP_SYS_NICE for compositor thread priority
   };
   systemd.user.services.monado.environment = {
-    STEAMVR_LH_ENABLE = "1";
+    XRT_NO_STDIN = "1";
+    XRT_COMPOSITOR_DESIRED_MODE = "1";
     XRT_COMPOSITOR_COMPUTE = "1";
-    # trying stuff from 
-    # https://github.com/TayouVR/nixfiles/blob/main/configs/common/optional/vr/monado.nix
+    U_PACING_COMP_MIN_TIME_MS = "5";
+    XRT_COMPOSITOR_USE_PRESENT_WAIT = "1";
+    U_PACING_COMP_TIME_FRACTION_PERCENT = "90";
+
+    # libsurvive: freeze global scene solver, fix timing for BSB2
+    # (harmless when using steamvr_lh builder)
+    SURVIVE_GLOBALSCENESOLVER = "0";
+    SURVIVE_TIMECODE_OFFSET_MS = "-6.94";
+
+    # SteamVR lighthouse builder: loads driver_lighthouse.so directly,
+    # does NOT require vrserver to be running.
+    # With this set, Monado uses SteamVR's lighthouse driver for tracking
+    # instead of libsurvive. BSB2 tracking via libsurvive was unstable;
+    # SteamVR's driver knows the BSB2 correctly.
+    STEAMVR_LH_ENABLE = "true";
     STEAMVR_PATH = "/home/s/.local/share/Steam/steamapps/common/SteamVR";
-    #XR_RUNTIME_JSON = "${config.hm.xdg.configHome}/openxr/1/active_runtime.json";
   };
 
   services.comfyui = {
@@ -135,6 +161,8 @@
   };
 
   # Enable sound.
+  security.rtkit.enable = true;
+
   services.pipewire = {
     enable = true;
     pulse.enable = true;
@@ -146,7 +174,6 @@
     enable = true;
     wlr.enable = true;
   };
-
   nixpkgs.config.allowUnfree = true; 
   # List packages installed in system profile.
   # You can use https://search.nixos.org/ to find more packages (and options).
@@ -168,6 +195,7 @@
     comfy-ui-cuda
     lovr-playspace
     age
+    python3
   ];
 
   # some sort of graphical greeter login prommpt

@@ -10,13 +10,14 @@
     # https://github.com/nix-community/nixpkgs-xr
     nixpkgs-xr.url = "github:nix-community/nixpkgs-xr";
     comfyui-nix.url = "github:utensils/comfyui-nix";
+    monado-local.url = "path:/home/s/lib/monado";
 
     # https://github.com/mic92/sops-nix
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, sops-nix }: {
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, monado-local, sops-nix }: {
     nixosConfigurations = {
       sayu = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -25,6 +26,11 @@
 	    nixpkgs.overlays = [ comfyui-nix.overlays.default ];
 	    #environment.systemPackages = [ nixpkgs.comfy-ui-cuda ];
           }
+          ({ pkgs, ... }: {
+            services.monado.package = pkgs.monado.overrideAttrs (_: {
+              src = monado-local;
+            });
+          })
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
           ./configuration.nix
@@ -34,4 +40,3 @@
     };
   };
 }
-
