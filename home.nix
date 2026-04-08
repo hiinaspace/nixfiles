@@ -38,6 +38,9 @@
     pkgs.obsidian
     pkgs.btop
     pkgs.jq
+    pkgs.godot
+    pkgs.mpv
+    pkgs.krita
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
