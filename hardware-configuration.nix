@@ -40,6 +40,21 @@
       options = [ "rw" "uid=1000" ];
     };
 
+  fileSystems."/mnt/morenix" = {
+    device = "/dev/disk/by-uuid/3321b18a-8fdc-4a23-9236-02a74ce9a856";
+    fsType = "ext4";
+    neededForBoot = true;
+    options = [ "noatime" ];
+  };
+
+
+  fileSystems."/nix" = {
+    depends = [ "/mnt/morenix" ];
+    device = "/mnt/morenix/nix";
+    neededForBoot = true;
+    options = [ "bind" ];
+  };
+
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
   # still possible to use this option, but it's recommended to use it in conjunction
