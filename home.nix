@@ -83,6 +83,11 @@
     }
   '';
 
+  # Keep a user-level OpenXR runtime override for pressure-vessel/Proton,
+  # but point it at /run/current-system so it survives Monado upgrades.
+  xdg.configFile."openxr/1/active_runtime.json".source =
+    config.lib.file.mkOutOfStoreSymlink "/run/current-system/sw/share/openxr/1/openxr_monado.json";
+
 
   # Home Manager can also manage your environment variables through
   # 'home.sessionVariables'. These will be explicitly sourced when using a

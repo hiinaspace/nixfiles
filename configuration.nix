@@ -127,7 +127,7 @@
   # https://wiki.nixos.org/wiki/VR
   services.monado = {
     enable = true;
-    defaultRuntime = false; # Keep Monado available, but do not own active_runtime.json
+    defaultRuntime = true; # Publish Monado as the active OpenXR runtime for native clients like WayVR
     highPriority = true;   # CAP_SYS_NICE for compositor thread priority
   };
   systemd.user.services.monado.environment = {
@@ -207,6 +207,7 @@
     lovr-playspace
     age
     python3
+    bubblewrap
   ];
 
   # some sort of graphical greeter login prommpt
