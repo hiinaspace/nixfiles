@@ -21,17 +21,32 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, home-manager, sops-nix }: {
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, home-manager, sops-nix }:
+    let
+      system = "x86_64-linux";
+      lib = nixpkgs.lib;
+      monadoSrc = lib.cleanSourceWith {
+        src = /home/s/lib/monado;
+        filter = path: type:
+          let
+            rel = lib.removePrefix "/home/s/lib/monado/" (toString path);
+          in
+            !(rel == "build" || lib.hasPrefix "build/" rel || rel == ".codex" || lib.hasPrefix ".codex/" rel);
+      };
+      localMonado = nixpkgs-xr.packages.${system}.monado.overrideAttrs (_old: {
+        src = monadoSrc;
+      });
+    in {
     nixosConfigurations = {
       sayu = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+        inherit system;
         modules = [
           {
 	    nixpkgs.overlays = [ comfyui-nix.overlays.default ];
           }
-          ({ ... }: {
-            services.monado.package = nixpkgs-xr.packages.x86_64-linux.monado;
-          })
+          #({ ... }: {
+          #  services.monado.package = localMonado;
+          #})
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
           ./configuration.nix
@@ -42,7 +57,7 @@
 
     homeConfigurations."s" = home-manager.lib.homeManagerConfiguration {
       pkgs = import nixpkgs {
-        system = "x86_64-linux";
+        inherit system;
         config.allowUnfree = true;
         overlays = [ nixpkgs-xr.overlays.default ];
       };

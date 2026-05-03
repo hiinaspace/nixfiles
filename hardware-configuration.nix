@@ -49,6 +49,7 @@
 
 
   fileSystems."/nix" = {
+    fsType = "none";
     depends = [ "/mnt/morenix" ];
     device = "/mnt/morenix/nix";
     neededForBoot = true;

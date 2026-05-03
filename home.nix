@@ -41,6 +41,10 @@
     pkgs.godot
     pkgs.mpv
     pkgs.krita
+    pkgs.blender
+    pkgs.gh
+    pkgs.obs-studio
+    pkgs.ffmpeg-full
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -85,8 +89,11 @@
 
   # Keep a user-level OpenXR runtime override for pressure-vessel/Proton,
   # but point it at /run/current-system so it survives Monado upgrades.
-  xdg.configFile."openxr/1/active_runtime.json".source =
-    config.lib.file.mkOutOfStoreSymlink "/run/current-system/sw/share/openxr/1/openxr_monado.json";
+  xdg.configFile."openxr/1/active_runtime.json" = {
+    source =
+      config.lib.file.mkOutOfStoreSymlink "/run/current-system/sw/share/openxr/1/openxr_monado.json";
+    force = true;
+  };
 
 
   # Home Manager can also manage your environment variables through

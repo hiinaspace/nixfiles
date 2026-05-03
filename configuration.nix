@@ -52,8 +52,8 @@
     initrd.luks.devices.luksroot = {
       device = "/dev/disk/by-uuid/4339faab-55ba-4eaf-b3cd-f894508f70aa";
       keyFile = "/lukskeyfile";
-      fallbackToPassword = true;
-      preLVM = false; # might not be necessary for keyfile booting
+      #fallbackToPassword = true;
+      #preLVM = false; # might not be necessary for keyfile booting
     };
     initrd.secrets = {
       "/lukskeyfile" = "/boot/lukskeyfile";
@@ -76,7 +76,7 @@
     # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/graphics/nvidia.nix#L4
     open = true; # required for BSB2 DSC display fix
     modesetting.enable = true;
-    powerManagement.enable = false;
+    powerManagement.enable = true;
     powerManagement.finegrained = false;
     forceFullCompositionPipeline = false; 
     nvidiaSettings = true;
@@ -96,6 +96,44 @@
     "nvidia_drm.fbdev=1"
     "nvidia-modeset.conceal_vrr_caps=1"
   ];
+
+  boot.extraModprobeConfig = ''
+    options nvidia NVreg_PreserveVideoMemoryAllocations=1 NVreg_UseKernelSuspendNotifiers=1
+  '';
+
+  # NixOS 26.05 doesn't auto-generate nvidia-suspend/resume services.
+  # Without the pre-suspend service, the compositor has in-flight DRM flip
+  # operations when the driver is suspended → Xid 13 on resume → blank display.
+  # nvidia-sleep.sh "suspend" does chvt 63 (stops compositor rendering) then
+  # writes to /proc/driver/nvidia/suspend to save driver state cleanly.
+  systemd.services.nvidia-suspend = {
+    description = "NVIDIA system suspend actions";
+    before = [ "systemd-suspend.service" "systemd-hibernate.service" "systemd-hybrid-sleep.service" ];
+    wantedBy = [ "systemd-suspend.service" "systemd-hibernate.service" "systemd-hybrid-sleep.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${config.hardware.nvidia.package}/bin/nvidia-sleep.sh suspend";
+      Environment = "PATH=/run/current-system/sw/bin";
+    };
+  };
+
+  systemd.services.nvidia-resume = {
+    description = "NVIDIA system resume actions";
+    after = [ "systemd-suspend.service" "systemd-hibernate.service" "systemd-hybrid-sleep.service" ];
+    wantedBy = [ "systemd-suspend.service" "systemd-hibernate.service" "systemd-hybrid-sleep.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${config.hardware.nvidia.package}/bin/nvidia-sleep.sh resume";
+      Environment = "PATH=/run/current-system/sw/bin";
+    };
+  };
+
+  # Greetd restart as a safety net in case sway's DRM state still doesn't
+  # recover after proper save/restore. Can be removed once suspend is stable.
+  powerManagement.resumeCommands = ''
+    systemctl restart greetd
+  '';
+
 
   programs.steam = {
     enable = true;
@@ -134,6 +172,7 @@
     XRT_NO_STDIN = "1";
     XRT_COMPOSITOR_DESIRED_MODE = "1";
     XRT_COMPOSITOR_COMPUTE = "1";
+    XRT_COMPOSITOR_PIPEWIRE_MIRROR = "0";
     U_PACING_COMP_MIN_TIME_MS = "5";
     XRT_COMPOSITOR_USE_PRESENT_WAIT = "1";
     U_PACING_COMP_TIME_FRACTION_PERCENT = "90";
@@ -150,6 +189,20 @@
     # SteamVR's driver knows the BSB2 correctly.
     STEAMVR_LH_ENABLE = "true";
     STEAMVR_PATH = "/home/s/.local/share/Steam/steamapps/common/SteamVR";
+
+    # Make GStreamer plugin discovery explicit for the user service so
+    # PipeWire sink/source elements are visible from Monado.
+    GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPath "lib/gstreamer-1.0" [
+      pkgs.gst_all_1.gstreamer
+      pkgs.gst_all_1.gst-plugins-base
+      pkgs.pipewire
+    ];
+    GST_PLUGIN_PATH_1_0 = lib.makeSearchPath "lib/gstreamer-1.0" [
+      pkgs.gst_all_1.gstreamer
+      pkgs.gst_all_1.gst-plugins-base
+      pkgs.pipewire
+    ];
+    GST_PLUGIN_SCANNER = "${pkgs.gst_all_1.gstreamer}/libexec/gstreamer-1.0/gst-plugin-scanner";
   };
 
   services.comfyui = {
@@ -186,7 +239,7 @@
   # List packages installed in system profile.
   # You can use https://search.nixos.org/ to find more packages (and options).
   environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    neovim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
     grim # screenshot
     slurp # more screenshot
