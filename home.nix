@@ -45,6 +45,7 @@
     pkgs.gh
     pkgs.obs-studio
     pkgs.ffmpeg-full
+    pkgs.opencode
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -94,6 +95,46 @@
       config.lib.file.mkOutOfStoreSymlink "/run/current-system/sw/share/openxr/1/openxr_monado.json";
     force = true;
   };
+
+  xdg.configFile."opencode/opencode.json".text = ''
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "model": "ollama/gemma4:31b",
+      "small_model": "ollama/gemma4:e4b",
+      "provider": {
+        "ollama": {
+          "npm": "@ai-sdk/openai-compatible",
+          "name": "Ollama (local)",
+          "options": {
+            "baseURL": "http://127.0.0.1:11434/v1"
+          },
+          "models": {
+            "gemma4:31b": {
+              "name": "Gemma 4 31B (Ollama)",
+              "limit": {
+                "context": 32768,
+                "output": 8192
+              }
+            },
+            "gemma4:26b": {
+              "name": "Gemma 4 26B A4B (Ollama)",
+              "limit": {
+                "context": 32768,
+                "output": 8192
+              }
+            },
+            "gemma4:e4b": {
+              "name": "Gemma 4 E4B (Ollama)",
+              "limit": {
+                "context": 32768,
+                "output": 8192
+              }
+            }
+          }
+        }
+      }
+    }
+  '';
 
 
   # Home Manager can also manage your environment variables through

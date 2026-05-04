@@ -213,6 +213,20 @@
     openFirewall = true;
   };
 
+  services.ollama = {
+    enable = true;
+    package = pkgs.ollama-cuda;
+    host = "127.0.0.1";
+    port = 11434;
+    loadModels = [
+      "gemma4:e4b"
+      "gemma4:31b"
+    ];
+    environmentVariables = {
+      OLLAMA_CONTEXT_LENGTH = "32768";
+    };
+  };
+
   # Enable sound.
   security.rtkit.enable = true;
 
@@ -291,6 +305,18 @@
     ];
     hashedPasswordFile = config.sops.secrets.spassword.path;
   };
+
+  security.sudo.extraRules = [
+    {
+      users = [ "s" ];
+      commands = [
+        {
+          command = "${config.system.build.nixos-rebuild}/bin/nixos-rebuild";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 
   programs.firefox.enable = true;
   
