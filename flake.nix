@@ -57,5 +57,18 @@
       };
       modules = [ ./home.nix ];
     };
+
+    devShells.${system}.default =
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+      in pkgs.mkShell {
+        packages = with pkgs; [
+          gitleaks
+          pre-commit
+        ];
+      };
   };
 }

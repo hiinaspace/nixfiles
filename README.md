@@ -43,3 +43,16 @@ also automatable in udev or something but didn't try yet.
 - [nixpkgs-xr](https://github.com/nix-community/nixpkgs-xr): up-to-date VR packages for NixOS
 - [Linux VR Adventures Wiki](https://lvra.gitlab.io/): general Linux VR setup guide
 - [sops-nix](https://github.com/Mic92/sops-nix): secrets management for NixOS
+
+## Secret scanning
+
+This repo uses `pre-commit` with Gitleaks to reduce the chance of committing
+plain-text credentials alongside the SOPS-encrypted secrets.
+
+```sh
+nix develop
+pre-commit install --hook-type pre-commit --hook-type pre-push
+```
+
+The pre-commit hook scans staged changes. The pre-push hook scans repository
+history before pushing.

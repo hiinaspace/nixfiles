@@ -248,6 +248,48 @@
     enable = true;
     wlr.enable = true;
   };
+
+  fonts = {
+    enableDefaultPackages = true;
+    packages = with pkgs; [
+      noto-fonts
+      noto-fonts-cjk-sans
+      noto-fonts-cjk-serif
+      noto-fonts-color-emoji
+    ];
+    fontconfig = {
+      antialias = true;
+      hinting.enable = true;
+      defaultFonts = {
+        sansSerif = [
+          "Noto Sans"
+          "Noto Sans CJK JP"
+          "Noto Sans CJK KR"
+          "Noto Sans CJK SC"
+          "Noto Sans CJK TC"
+          "Noto Sans CJK HK"
+        ];
+        serif = [
+          "Noto Serif"
+          "Noto Serif CJK JP"
+          "Noto Serif CJK KR"
+          "Noto Serif CJK SC"
+          "Noto Serif CJK TC"
+          "Noto Serif CJK HK"
+        ];
+        monospace = [
+          "Noto Sans Mono"
+          "Noto Sans Mono CJK JP"
+          "Noto Sans Mono CJK KR"
+          "Noto Sans Mono CJK SC"
+          "Noto Sans Mono CJK TC"
+          "Noto Sans Mono CJK HK"
+        ];
+        emoji = [ "Noto Color Emoji" ];
+      };
+    };
+  };
+
   # Expose the host OpenXR runtime inside Steam's pressure-vessel sandbox.
   # Without this, Proton can't see Monado's active_runtime.json.
   # https://lvra.gitlab.io/docs/fossvr/xrizer/
@@ -318,6 +360,10 @@
     {
       users = [ "s" ];
       commands = [
+        {
+          command = "/run/current-system/sw/bin/nixos-rebuild";
+          options = [ "NOPASSWD" ];
+        }
         {
           command = "${config.system.build.nixos-rebuild}/bin/nixos-rebuild";
           options = [ "NOPASSWD" ];
