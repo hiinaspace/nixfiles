@@ -55,4 +55,5 @@ pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
 The pre-commit hook scans staged changes. The pre-push hook scans repository
-history before pushing.
+history before pushing. The hooks will use `gitleaks` from your shell when
+available, or fall back to `nix develop` automatically.

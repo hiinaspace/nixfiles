@@ -66,6 +66,7 @@
         };
       in pkgs.mkShell {
         packages = with pkgs; [
+          git
           gitleaks
           pre-commit
         ];

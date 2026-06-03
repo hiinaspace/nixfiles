@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: gitleaks-staged
         name: Gitleaks (staged files)
-        entry: gitleaks git --pre-commit --redact --staged --verbose
+        entry: .pre-commit-hooks/gitleaks git --pre-commit --redact --staged --verbose
         language: system
         pass_filenames: false
         always_run: true
@@ -11,7 +11,7 @@ repos:
 
       - id: gitleaks-history
         name: Gitleaks (repository history)
-        entry: gitleaks git --redact --verbose .
+        entry: .pre-commit-hooks/gitleaks git --redact --verbose .
         language: system
         pass_filenames: false
         always_run: true
