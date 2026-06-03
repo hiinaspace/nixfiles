@@ -1,0 +1,42 @@
+diff --git a/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp b/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
+index 3b3c0f5c8..a9e15c9fe 100644
+--- a/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
++++ b/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
+@@ -92,7 +92,7 @@ struct steamvr_lh_system
+ 	std::shared_ptr<Context> ctx;
+ };
+ 
+-struct steamvr_lh_system *svrs = U_TYPED_CALLOC(struct steamvr_lh_system);
++struct steamvr_lh_system *svrs = nullptr;
+ 
+ 
+ // ~/.steam/root is a symlink to where the Steam root is
+@@ -885,18 +885,26 @@ get_roles(struct xrt_system_devices *xsysd, struct xrt_system_roles *out_roles)
+ void
+ destroy(struct xrt_system_devices *xsysd)
+ {
++	auto *system = reinterpret_cast<steamvr_lh_system *>(xsysd);
++
+ 	for (uint32_t i = 0; i < ARRAY_SIZE(xsysd->static_xdevs); i++) {
+ 		xrt_device_destroy(&xsysd->static_xdevs[i]);
+ 	}
+ 
+-	svrs->ctx.reset();
+-	free(svrs);
++	system->ctx.reset();
++	if (svrs == system) {
++		svrs = nullptr;
++	}
++	delete system;
+ }
+ 
+ extern "C" enum xrt_result
+ steamvr_lh_create_devices(struct xrt_prober *xp, struct xrt_system_devices **out_xsysd)
+ {
+ 	u_logging_level level = debug_get_log_option_lh_log();
++	delete svrs;
++	svrs = new steamvr_lh_system{};
++
+ 	// The driver likes to create a bunch of transient folders -
+ 	// let's try to make sure they're created where they normally are.
+ 	std::filesystem::path dir = STEAM_INSTALL_DIR + "/config/lighthouse";

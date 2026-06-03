@@ -172,10 +172,17 @@
     XRT_NO_STDIN = "1";
     XRT_COMPOSITOR_DESIRED_MODE = "1";
     XRT_COMPOSITOR_COMPUTE = "1";
+    XRT_COMPOSITOR_FORCE_GPU_INDEX = "0";
+    XRT_COMPOSITOR_FORCE_CLIENT_GPU_INDEX = "0";
     XRT_COMPOSITOR_PIPEWIRE_MIRROR = "0";
     U_PACING_COMP_MIN_TIME_MS = "5";
     XRT_COMPOSITOR_USE_PRESENT_WAIT = "1";
     U_PACING_COMP_TIME_FRACTION_PERCENT = "90";
+
+    # The BSB display is leased from the NVIDIA card. Keep Monado from
+    # auto-selecting the AMD iGPU's RADV device for vkGetDrmDisplayEXT.
+    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json";
+    VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json";
 
     # libsurvive: freeze global scene solver, fix timing for BSB2
     # (harmless when using steamvr_lh builder)

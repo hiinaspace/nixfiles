@@ -25,16 +25,10 @@
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
-      monadoSrc = lib.cleanSourceWith {
-        src = /home/s/lib/monado;
-        filter = path: type:
-          let
-            rel = lib.removePrefix "/home/s/lib/monado/" (toString path);
-          in
-            !(rel == "build" || lib.hasPrefix "build/" rel || rel == ".codex" || lib.hasPrefix ".codex/" rel);
-      };
-      localMonado = nixpkgs-xr.packages.${system}.monado.overrideAttrs (_old: {
-        src = monadoSrc;
+      patchedMonado = nixpkgs-xr.packages.${system}.monado.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [
+          ./monado-steamvr-lh-reinit.patch
+        ];
       });
     in {
     nixosConfigurations = {
@@ -44,9 +38,9 @@
           {
 	    nixpkgs.overlays = [ comfyui-nix.overlays.default ];
           }
-          #({ ... }: {
-          #  services.monado.package = localMonado;
-          #})
+          ({ ... }: {
+            services.monado.package = patchedMonado;
+          })
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
           ./configuration.nix

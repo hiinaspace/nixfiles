@@ -46,6 +46,7 @@
     pkgs.obs-studio
     pkgs.ffmpeg-full
     pkgs.opencode
+    pkgs.mumble
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -170,6 +171,10 @@
     interactiveShellInit = ''
       set fish_greeting # Disable greeting
     '';
+    shellAliases = {
+      vim = "nvim";
+      "e" = "nvim";
+    };
   };
   home.shell.enableFishIntegration = true;
 
