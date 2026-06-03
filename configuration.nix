@@ -5,6 +5,37 @@
 # enable flakes
 { config, lib, pkgs, ... }:
 
+let
+  chirashiSsh = pkgs.writeShellScript "chirashi-sshfs-ssh" ''
+    exec ${pkgs.openssh}/bin/ssh -F /home/s/.ssh/config "$@"
+  '';
+
+  chirashiSshfsOptions = [
+    "noauto"
+    "x-systemd.automount"
+    "_netdev"
+    "users"
+    "noatime"
+    "idmap=user"
+    "uid=1000"
+    "gid=100"
+    "allow_other"
+    "default_permissions"
+    "reconnect"
+    "ServerAliveInterval=15"
+    "ServerAliveCountMax=3"
+    "IdentityFile=/home/s/.ssh/id_ed25519"
+    "UserKnownHostsFile=/home/s/.ssh/known_hosts"
+    "ssh_command=${chirashiSsh}"
+  ];
+
+  chirashiSshfsMount = remotePath: {
+    device = "chirashi:${remotePath}";
+    fsType = "sshfs";
+    noCheck = true;
+    options = chirashiSshfsOptions;
+  };
+in
 {
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.max-jobs = 2;
@@ -63,6 +94,13 @@
   networking.hostName = "sayu";
   networking.networkmanager.enable = true;
 
+  fileSystems = {
+    "/mnt/pool" = chirashiSshfsMount "/mnt/pool";
+    "/mnt/nvme" = chirashiSshfsMount "/mnt/nvme";
+    "/mnt/www" = chirashiSshfsMount "/mnt/nvme/webdav";
+  };
+  programs.fuse.userAllowOther = true;
+
   # Set your time zone.
   time.timeZone = "America/Denver";
 
@@ -95,11 +133,8 @@
   boot.kernelParams = [
     "nvidia_drm.fbdev=1"
     "nvidia-modeset.conceal_vrr_caps=1"
+    "nvidia.NVreg_TemporaryFilePath=/var/tmp"
   ];
-
-  boot.extraModprobeConfig = ''
-    options nvidia NVreg_PreserveVideoMemoryAllocations=1 NVreg_UseKernelSuspendNotifiers=1
-  '';
 
   # NixOS 26.05 doesn't auto-generate nvidia-suspend/resume services.
   # Without the pre-suspend service, the compositor has in-flight DRM flip
@@ -127,13 +162,6 @@
       Environment = "PATH=/run/current-system/sw/bin";
     };
   };
-
-  # Greetd restart as a safety net in case sway's DRM state still doesn't
-  # recover after proper save/restore. Can be removed once suspend is stable.
-  powerManagement.resumeCommands = ''
-    systemctl restart greetd
-  '';
-
 
   programs.steam = {
     enable = true;
