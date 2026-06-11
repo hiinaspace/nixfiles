@@ -340,6 +340,7 @@ in
     grim # screenshot
     slurp # more screenshot
     wl-clipboard # wayland clipboard
+    xclip # xwayland clipboard bridge
     mako # sway notifications
     element-desktop
     #factorio-space-age

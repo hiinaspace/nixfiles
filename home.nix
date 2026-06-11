@@ -47,6 +47,9 @@
     pkgs.ffmpeg-full
     pkgs.opencode
     pkgs.mumble
+    pkgs.swappy
+    pkgs.grim
+    pkgs.slurp
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -62,6 +65,22 @@
     #   org.gradle.console=verbose
     #   org.gradle.daemon.idletimeout=3600000
     # '';
+  };
+
+  systemd.user.services.proton-clipboard-bridge = {
+    Unit = {
+      Description = "Bridge Wayland clipboard to XWayland clipboard for Proton";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+
+    Service = {
+      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --watch ${pkgs.bash}/bin/sh -c '[ \"$CLIPBOARD_STATE\" = data ] && ${pkgs.xclip}/bin/xclip -selection clipboard -i'";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   # https://lvra.gitlab.io/docs/distros/nixos/#recommendations
