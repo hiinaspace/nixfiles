@@ -67,22 +67,6 @@
     # '';
   };
 
-  systemd.user.services.proton-clipboard-bridge = {
-    Unit = {
-      Description = "Bridge Wayland clipboard to XWayland clipboard for Proton";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-
-    Service = {
-      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --watch ${pkgs.bash}/bin/sh -c '[ \"$CLIPBOARD_STATE\" = data ] && ${pkgs.xclip}/bin/xclip -selection clipboard -i'";
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
-
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
   # https://lvra.gitlab.io/docs/distros/nixos/#recommendations
   # Tell the OpenVR loader (inside Proton/Wine) to use xrizer as the runtime.
   # xrizer bridges OpenVR → OpenXR → Monado.

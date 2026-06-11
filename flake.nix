@@ -10,6 +10,7 @@
     # https://github.com/nix-community/nixpkgs-xr
     nixpkgs-xr.url = "github:nix-community/nixpkgs-xr";
     comfyui-nix.url = "github:utensils/comfyui-nix";
+    clipboard-sync.url = "github:dnut/clipboard-sync";
 
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -21,7 +22,7 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, home-manager, sops-nix }:
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, home-manager, sops-nix }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -43,6 +44,7 @@
           })
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
+          clipboard-sync.nixosModules.default
           ./configuration.nix
           sops-nix.nixosModules.sops
         ];

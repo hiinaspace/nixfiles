@@ -171,6 +171,8 @@ in
       proton-ge-rtsp-bin
     ];
   };
+
+  services.clipboard-sync.enable = true;
   
   # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/vr/vr.nix#L34
   # Bigscreen Beyond udev rules (all interfaces: HMD, Bigeye, audio strap, firmware mode)
