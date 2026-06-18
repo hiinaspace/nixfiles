@@ -49,6 +49,10 @@ in
 
   # Use the systemd-boot EFI boot loader.
   boot = {
+    kernel.sysctl = {
+      "fs.inotify.max_user_watches" = 1048576;
+    };
+
     loader = {
       efi = {
         canTouchEfiVariables = true;
