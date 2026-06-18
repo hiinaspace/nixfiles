@@ -248,7 +248,14 @@ in
     enableManager = true;  # Enable the built-in ComfyUI Manager
     listenAddress = "0.0.0.0";
     openFirewall = true;
+    environment.LD_LIBRARY_PATH = lib.makeLibraryPath [
+      config.services.comfyui.package.pythonRuntime.pkgs.torch.cudaPackages.cuda_nvrtc.lib
+    ];
   };
+
+  systemd.services.comfyui.serviceConfig.ReadWritePaths = lib.mkAfter [
+    "/mnt/s/comfyuimodels"
+  ];
 
   services.ollama = {
     enable = true;
