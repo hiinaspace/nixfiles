@@ -209,12 +209,15 @@ in
     XRT_COMPOSITOR_FORCE_GPU_INDEX = "0";
     XRT_COMPOSITOR_FORCE_CLIENT_GPU_INDEX = "0";
     XRT_COMPOSITOR_PIPEWIRE_MIRROR = "0";
+    XRT_COMPOSITOR_FORCE_WAYLAND_DIRECT = "1";
+    XRT_COMPOSITOR_WAYLAND_CONNECTOR = "DP-4";
     U_PACING_COMP_MIN_TIME_MS = "5";
     XRT_COMPOSITOR_USE_PRESENT_WAIT = "1";
     U_PACING_COMP_TIME_FRACTION_PERCENT = "90";
 
-    # The BSB display is leased from the NVIDIA card. Keep Monado from
-    # auto-selecting the AMD iGPU's RADV device for vkGetDrmDisplayEXT.
+    # The BSB display is leased from the NVIDIA card. Use Wayland DRM leasing
+    # to avoid the NVIDIA Xlib direct-display path getting wedged after resume.
+    # Keep Monado from auto-selecting the AMD iGPU's RADV device.
     VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json";
     VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json";
 
