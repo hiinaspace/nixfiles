@@ -293,7 +293,12 @@ in
     wlr.enable = true;
     # pikeru as the file picker backend (its .portal/dbus/systemd units ship in the package).
     extraPortals = [ pkgs.pikeru ];
+    # Set FileChooser on both the common config and the sway-specific one.
+    # programs.sway generates sway-portals.conf with `default=gtk`, which takes
+    # precedence over portals.conf for sway sessions; without an explicit
+    # FileChooser there, `default=gtk` would catch it and shadow pikeru.
     config.common."org.freedesktop.impl.portal.FileChooser" = [ "pikeru" ];
+    config.sway."org.freedesktop.impl.portal.FileChooser" = [ "pikeru" ];
   };
 
   # pikeru's portal binary searches /usr/... for its wrapper, which doesn't exist

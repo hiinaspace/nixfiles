@@ -1,5 +1,6 @@
 { lib
 , rustPlatform
+, bash
 , pkg-config
 , scdoc
 , makeWrapper
@@ -75,6 +76,11 @@ rustPlatform.buildRustPackage {
       "$out/share/xdg-desktop-portal-pikeru/pikeru-wrapper.sh"
     substituteInPlace "$out/share/xdg-desktop-portal-pikeru/pikeru-wrapper.sh" \
       --replace-fail 'pikeru -m' "$out/bin/pikeru -m"
+    # The wrapper ships with #!/bin/bash, which does not exist on NixOS, so the
+    # portal fails to exec it ("bad interpreter") and never shows a window.
+    # patchShebangs leaves /bin/bash alone, so rewrite it to the store bash.
+    substituteInPlace "$out/share/xdg-desktop-portal-pikeru/pikeru-wrapper.sh" \
+      --replace-fail '#!/bin/bash' '#!${bash}/bin/bash'
 
     install -Dm755 xdg_portal/postprocess.example.sh \
       "$out/share/xdg-desktop-portal-pikeru/postprocess.example.sh"
