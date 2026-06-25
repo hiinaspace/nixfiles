@@ -242,6 +242,22 @@
         "type": "github"
       }
     },
+    "pikeru-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780173124,
+        "narHash": "sha256-iNfGHohVzWrHgdfDTJ5QfnmA49V9X6hj87Nd5KB/xi0=",
+        "owner": "dvhar",
+        "repo": "pikeru",
+        "rev": "719ce23f0eacf0cb1e95f1c2d1484c706b3f5eea",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dvhar",
+        "repo": "pikeru",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "clipboard-sync": "clipboard-sync",
@@ -249,6 +265,7 @@
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-xr": "nixpkgs-xr",
+        "pikeru-src": "pikeru-src",
         "sops-nix": "sops-nix"
       }
     },

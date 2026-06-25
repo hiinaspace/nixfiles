@@ -12,6 +12,13 @@
     comfyui-nix.url = "github:utensils/comfyui-nix";
     clipboard-sync.url = "github:dnut/clipboard-sync";
 
+    # Source-only input: pinned in flake.lock, packaged locally in ./pikeru.nix.
+    # Bump with `nix flake update pikeru-src`.
+    pikeru-src = {
+      url = "github:dvhar/pikeru";
+      flake = false;
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -22,7 +29,7 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, home-manager, sops-nix }:
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, pikeru-src, home-manager, sops-nix }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -31,13 +38,17 @@
           ./monado-steamvr-lh-reinit.patch
         ];
       });
+      # Overlay exposing our locally-packaged pikeru as pkgs.pikeru.
+      pikeruOverlay = final: prev: {
+        pikeru = final.callPackage ./pikeru.nix { src = pikeru-src; };
+      };
     in {
     nixosConfigurations = {
       sayu = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
           {
-	    nixpkgs.overlays = [ comfyui-nix.overlays.default ];
+	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay ];
           }
           ({ ... }: {
             services.monado.package = patchedMonado;

@@ -291,7 +291,26 @@ in
   xdg.portal = {
     enable = true;
     wlr.enable = true;
+    # pikeru as the file picker backend (its .portal/dbus/systemd units ship in the package).
+    extraPortals = [ pkgs.pikeru ];
+    config.common."org.freedesktop.impl.portal.FileChooser" = [ "pikeru" ];
   };
+
+  # pikeru's portal binary searches /usr/... for its wrapper, which doesn't exist
+  # on NixOS, so point it at the store path via the system config (read from
+  # /etc/xdg per portal.rs find_config()).
+  environment.etc."xdg/xdg-desktop-portal-pikeru/config".text = ''
+    log_level = info
+
+    [filepicker]
+    cmd = ${pkgs.pikeru}/share/xdg-desktop-portal-pikeru/pikeru-wrapper.sh
+    default_save_dir = ~/Downloads
+    postprocessor =
+    postprocess_dir = /tmp/pk_postprocess
+
+    [indexer]
+    enable = false
+  '';
 
   fonts = {
     enableDefaultPackages = true;
