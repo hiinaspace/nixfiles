@@ -156,6 +156,14 @@
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 
+  dconf = {
+    enable = true;
+    settings = {
+      "org/gnome/desktop/interface" = {
+        color-scheme = "prefer-dark";
+      };
+    };
+  };
 
   programs.tmux.enable = true;
   # fix colors
