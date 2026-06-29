@@ -45,6 +45,7 @@ in
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./cachix.nix
+      ./backup.nix
     ];
 
   # Use the systemd-boot EFI boot loader.
