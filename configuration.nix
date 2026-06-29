@@ -84,7 +84,7 @@ in
         extraConfig = ''
           search --no-floppy --fs-uuid --set usbswitch C867-7FAC
           if [ "$usbswitch" ] ; then
-            set default=2
+            set default="Windows 11"
           fi
         '';
       };
