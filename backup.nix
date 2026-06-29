@@ -91,6 +91,8 @@
         "sh:**/.venv"
       ];
 
+      relocated_repo_access_is_ok = true;
+
       # retention (prune runs as part of the daily borgmatic job)
       keep_daily = 7;
       keep_weekly = 4;
