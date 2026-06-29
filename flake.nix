@@ -27,9 +27,13 @@
     # https://github.com/mic92/sops-nix
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Ephemeral-root persistence. Pinned now; wired in at the impermanence reinstall
+    # (see ./impermanence.nix). Inert until then.
+    impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, pikeru-src, home-manager, sops-nix }:
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, pikeru-src, home-manager, sops-nix, impermanence }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -58,17 +62,23 @@
           clipboard-sync.nixosModules.default
           ./configuration.nix
           sops-nix.nixosModules.sops
+          # Impermanence: enable together at the ephemeral-root reinstall, once the
+          # btrfs @ rollback subvolume + /persist mount exist (see ./impermanence.nix).
+          # impermanence.nixosModules.impermanence
+          # ./impermanence.nix
+          home-manager.nixosModules.home-manager
+          {
+            # Home Manager as a NixOS module: one `nixos-rebuild switch` builds and
+            # activates both system and home, sharing the system's pkgs + overlays.
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            # Safety net for the standalone->module transition: back up any colliding
+            # file instead of aborting activation.
+            home-manager.backupFileExtension = "hm-bak";
+            home-manager.users.s = import ./home.nix;
+          }
         ];
       };
-    };
-
-    homeConfigurations."s" = home-manager.lib.homeManagerConfiguration {
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        overlays = [ nixpkgs-xr.overlays.default ];
-      };
-      modules = [ ./home.nix ];
     };
 
     devShells.${system}.default =

@@ -16,8 +16,7 @@
   home.stateVersion = "25.11"; # Please read the comment before changing.
 
   # The home.packages option allows you to install Nix packages into your
-  # environment.
-  nixpkgs.config.allowUnfree = true;
+  # environment. (allowUnfree comes from the system pkgs via useGlobalPkgs.)
   home.packages = [
     # # Adds the 'hello' command to your environment. It prints a friendly
     # # "Hello, world!" when run.
@@ -207,6 +206,9 @@
   programs.starship = {
     enable = true;
     enableFishIntegration = true;
+    # Hand-tuned TOML parsed into native settings (HM round-trips it back to TOML),
+    # so there's a single source of truth and no separate verbatim file to manage.
+    settings = builtins.fromTOML (builtins.readFile ./dotfiles/starship.toml);
   };
 
   programs.eza = {
@@ -228,6 +230,13 @@
     size = 24;
     sway.enable = true;
   };
+
+  # Hand-authored configs, version-controlled in ./dotfiles and deployed verbatim as
+  # store symlinks. Edit the repo copy and `home-manager switch` to apply.
+  xdg.configFile."sway/config".source = ./dotfiles/sway/config;
+  xdg.configFile."mpv/scripts/webm.lua".source = ./dotfiles/mpv/scripts/webm.lua;
+  xdg.configFile."waybar/config.jsonc".source = ./dotfiles/waybar/config.jsonc;
+  xdg.configFile."waybar/style.css".source = ./dotfiles/waybar/style.css;
 
   programs.waybar.enable = true;
 

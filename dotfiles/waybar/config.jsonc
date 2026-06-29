@@ -1,0 +1,108 @@
+[
+	{
+		"layer": "top",
+		"output": "DP-5",
+		"position": "left",
+		"spacing": 4,
+		"modules-left": ["sway/workspaces", "sway/mode"],
+		"modules-center": ["sway/window"],
+		"modules-right": ["tray", "power-profiles-daemon", "pulseaudio", "battery", "custom/clock"],
+		"sway/window": {
+			"max-length": 50,
+			"rotate": 270
+		},
+		"battery": {
+			"format": "{capacity}% {icon}",
+			"format-icons": ["", "", "", "", ""],
+			"rotate": 270
+		},
+		"pulseaudio": {
+			"format": "{volume}% {icon} {format_source}",
+			"format-bluetooth": "{volume}% {icon} {format_source}",
+			"format-bluetooth-muted": " {icon} {format_source}",
+			"format-muted": " {format_source}",
+			"format-source": "{volume}% ",
+			"format-source-muted": "",
+			"format-icons": {
+				"headphone": "",
+				"hands-free": "",
+				"headset": "",
+				"phone": "",
+				"portable": "",
+				"car": "",
+				"default": ["", "", ""]
+			},
+			"on-click": "pavucontrol",
+			"rotate": 270
+		},
+		"custom/clock": {
+			"format": "{}",
+			"tooltip": false,
+			"exec": "date +'%b %d %H:%M'",
+			"interval": 60,
+			"rotate": 270
+		},
+		"power-profiles-daemon": {
+			"format": "{icon}",
+			"tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+			"tooltip": true,
+			"format-icons": {
+				"default": "",
+				"performance": "",
+				"balanced": "",
+				"power-saver": ""
+			}
+		}
+	},
+	{
+		"layer": "top",
+		"output": "DP-6",
+		"position": "top",
+		"spacing": 4,
+		"modules-left": ["sway/workspaces", "sway/mode"],
+		"modules-center": ["sway/window"],
+		"modules-right": ["tray", "power-profiles-daemon", "pulseaudio", "battery", "custom/clock"],
+		"sway/window": {
+			"max-length": 50
+		},
+		"battery": {
+			"format": "{capacity}% {icon}",
+			"format-icons": ["", "", "", "", ""]
+		},
+		"pulseaudio": {
+			"format": "{volume}% {icon} {format_source}",
+			"format-bluetooth": "{volume}% {icon} {format_source}",
+			"format-bluetooth-muted": " {icon} {format_source}",
+			"format-muted": " {format_source}",
+			"format-source": "{volume}% ",
+			"format-source-muted": "",
+			"format-icons": {
+				"headphone": "",
+				"hands-free": "",
+				"headset": "",
+				"phone": "",
+				"portable": "",
+				"car": "",
+				"default": ["", "", ""]
+			},
+			"on-click": "pavucontrol"
+		},
+		"custom/clock": {
+			"format": "{}",
+			"tooltip": false,
+			"exec": "date +'%b %d %H:%M'",
+			"interval": 60
+		},
+		"power-profiles-daemon": {
+			"format": "{icon}",
+			"tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+			"tooltip": true,
+			"format-icons": {
+				"default": "",
+				"performance": "",
+				"balanced": "",
+				"power-saver": ""
+			}
+		}
+	}
+]
