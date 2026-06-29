@@ -62,18 +62,22 @@ in
         enable = true;
         device = "nodev";
         efiSupport = true;
-        useOSProber = true;
-        # I think the osprober works now so unnecessary
-        #extraEntries = ''
-        #  menuentry "Windows 11" {
-        #    insmod part_gpt
-        #    insmod fat
-        #    insmod search_fs_uuid
-        #    insmod chain
-        #    search --fs-uuid --set=root EA39-327B
-        #    chainloader /EFI/Microsoft/Boot/bootmgfw.efi
-        #  }
-        #'';
+        # os-prober can't see Windows here: it skips mounted partitions, and the
+        # Windows C: drive is auto-mounted at /mnt/c. Use an explicit entry instead.
+        useOSProber = false;
+        # Windows lives on the p1 ESP (EA39-327B), restored to /EFI/Microsoft after
+        # the reinstall deleted the old shared ESP. This is menu index 2 (after the
+        # default NixOS entry + the generations submenu), matching the USB switch below.
+        extraEntries = ''
+          menuentry "Windows 11" {
+            insmod part_gpt
+            insmod fat
+            insmod search_fs_uuid
+            insmod chain
+            search --fs-uuid --set=root EA39-327B
+            chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+          }
+        '';
 
         # if usb stick is inserted, boot to windows by default
         # https://danb.me/blog/grub-usb/
