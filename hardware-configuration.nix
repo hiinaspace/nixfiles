@@ -39,6 +39,11 @@
     { device = "/dev/mapper/luksroot";
       fsType = "btrfs";
       options = [ "subvol=@home" "compress=zstd" "noatime" ];
+      # The sops-nix age key lives at /home/s/.config/sops/age/keys.txt and is
+      # needed at early boot to decrypt the neededForUsers `spassword` secret
+      # (which sets /etc/shadow). Mount /home early so the key is available then;
+      # otherwise the user's password never lands in the per-boot-wiped shadow.
+      neededForBoot = true;
     };
 
   fileSystems."/persist" =

@@ -457,6 +457,10 @@ in
     }
   ];
 
+  # Impermanence wipes /var each boot, which resets sudo's per-user "lectured"
+  # flag, so the lecture would show on the first sudo of every boot. Silence it.
+  security.sudo.extraConfig = "Defaults lecture = never";
+
   programs.firefox.enable = true;
   
   # apparently needed for secret storage through dbus
