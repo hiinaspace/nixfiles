@@ -424,6 +424,13 @@ in
   sops.age.keyFile = "/home/s/.config/sops/age/keys.txt";
   sops.secrets.spassword.neededForUsers = true;
 
+  # Impermanence wipes /etc (incl. /etc/shadow) every boot, so passwords must be
+  # fully declarative: mutableUsers=false makes NixOS re-assert hashedPasswordFile
+  # into /etc/shadow on every activation. With the default (true), the sops hash
+  # lands in /run/secrets-for-users but never reliably reaches the wiped shadow,
+  # so console/sudo auth fails even though the hash matches the password.
+  users.mutableUsers = false;
+
   users.users.s = {
     isNormalUser = true;
     # sudo, video and input for maybe VR compat
