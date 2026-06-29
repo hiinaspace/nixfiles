@@ -62,10 +62,10 @@
           clipboard-sync.nixosModules.default
           ./configuration.nix
           sops-nix.nixosModules.sops
-          # Impermanence: enable together at the ephemeral-root reinstall, once the
-          # btrfs @ rollback subvolume + /persist mount exist (see ./impermanence.nix).
-          # impermanence.nixosModules.impermanence
-          # ./impermanence.nix
+          # Impermanence: ephemeral root, rolled back to @blank each boot. Active
+          # since the btrfs reinstall (see ./impermanence.nix).
+          impermanence.nixosModules.impermanence
+          ./impermanence.nix
           home-manager.nixosModules.home-manager
           {
             # Home Manager as a NixOS module: one `nixos-rebuild switch` builds and

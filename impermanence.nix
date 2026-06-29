@@ -1,13 +1,13 @@
 # ============================================================================
-# STAGED — NOT imported by flake.nix yet. Wire this in only AFTER the reinstall
-# lays out a btrfs root with a roll-back-on-boot @ subvolume and a /persist mount.
+# ACTIVE as of the impermanence/btrfs reinstall. Imported by flake.nix alongside
+# inputs.impermanence.nixosModules.impermanence. Assumes the disk was laid out with
+# a btrfs root carrying a roll-back-on-boot @ subvolume, an @blank snapshot, and a
+# /persist subvolume (see the layout + recipe below).
 #
-# Activation at reinstall:
-#   1. flake.nix: add `inputs.impermanence.nixosModules.impermanence` and
-#      `./impermanence.nix` to the sayu module list (both currently commented there).
-#   2. Restore the critical state onto /persist before first real boot, esp.
-#      /persist/etc/ssh/ssh_host_* (so host identity + the sops-nix age identity
-#      derived from it stay stable) and /persist/var/lib/{nixos,systemd,...}.
+# At reinstall, restore/seed critical state onto /persist before first real boot if
+# you want stable identity, esp. /persist/etc/ssh/ssh_host_* (host identity + the
+# sops-nix age identity) and /persist/var/lib/{nixos,systemd,...}. Regenerating the
+# host keys is fine (only causes known_hosts churn on machines that connect TO sayu).
 #
 # ---- Target btrfs layout (built at install time, goes in hardware-configuration.nix) ----
 #   LUKS -> btrfs with subvolumes:
@@ -44,6 +44,27 @@
 { lib, ... }:
 
 {
+  # Roll the btrfs root (@) back to the empty @blank snapshot on every boot, in the
+  # initrd, after the LUKS container is opened and before the real root is mounted.
+  # @blank is created once at install (a snapshot of the freshly-created empty @).
+  boot.initrd.systemd.services.rollback = {
+    description = "Rollback btrfs root to a blank snapshot";
+    wantedBy = [ "initrd.target" ];
+    after = [ "systemd-cryptsetup@luksroot.service" ];
+    before = [ "sysroot.mount" ];
+    unitConfig.DefaultDependencies = "no";
+    serviceConfig.Type = "oneshot";
+    script = ''
+      mkdir -p /mnt
+      mount -o subvol=/ /dev/mapper/luksroot /mnt
+      btrfs subvolume list -o /mnt/@ | cut -f9 -d' ' \
+        | while read sub; do btrfs subvolume delete "/mnt/$sub"; done
+      btrfs subvolume delete /mnt/@
+      btrfs subvolume snapshot /mnt/@blank /mnt/@
+      umount /mnt
+    '';
+  };
+
   # Keep host SSH identity (and the sops-nix age identity derived from it) on /persist
   # so it's stable across the per-boot root wipe. Copy the existing keys here at restore.
   services.openssh.hostKeys = [

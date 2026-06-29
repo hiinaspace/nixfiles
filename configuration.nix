@@ -472,6 +472,10 @@ in
   # https://wiki.nixos.org/wiki/Storage_optimization
   nix.settings.auto-optimise-store = true;
 
+  # Compressed RAM swap; no on-disk swap (the old in-LUKS swap partition is gone
+  # with the btrfs reinstall). No hibernate.
+  zramSwap.enable = true;
+
 
   hardware.bluetooth = {
     enable = true;

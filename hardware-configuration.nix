@@ -9,14 +9,56 @@
     ];
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "thunderbolt" "usb_storage" "usbhid" "sd_mod" ];
-  boot.initrd.kernelModules = [ "dm-snapshot" ];
+  boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
-  boot.supportedFilesystems = [ "ntfs" ];
+  boot.supportedFilesystems = [ "ntfs" "btrfs" ];
 
+  # systemd-based initrd: required for the btrfs roll-back-on-boot service in
+  # impermanence.nix (boot.initrd.systemd.services.rollback) and for the
+  # systemd-cryptsetup LUKS keyfile unlock it orders against.
+  boot.initrd.systemd.enable = true;
+
+  # Single LUKS container (opened in initrd via /boot keyfile; see configuration.nix)
+  # holding one btrfs filesystem with subvolumes. The @ root is wiped to @blank on
+  # every boot by the impermanence rollback service.
   fileSystems."/" =
-    { device = "/dev/disk/by-uuid/b53d5746-0d84-4773-8ef3-cc0c51564ef8";
-      fsType = "ext4";
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@" "compress=zstd" "noatime" ];
+    };
+
+  fileSystems."/nix" =
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@nix" "compress=zstd" "noatime" ];
+      neededForBoot = true;
+    };
+
+  fileSystems."/home" =
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@home" "compress=zstd" "noatime" ];
+    };
+
+  fileSystems."/persist" =
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@persist" "compress=zstd" "noatime" ];
+      neededForBoot = true;
+    };
+
+  fileSystems."/var/log" =
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@log" "compress=zstd" "noatime" ];
+      neededForBoot = true;
+    };
+
+  fileSystems."/.snapshots" =
+    { device = "/dev/mapper/luksroot";
+      fsType = "btrfs";
+      options = [ "subvol=@snapshots" "compress=zstd" "noatime" ];
     };
 
   fileSystems."/boot" =
@@ -25,10 +67,7 @@
       options = [ "fmask=0022" "dmask=0022" ];
     };
 
-  swapDevices =
-    [ { device = "/dev/disk/by-uuid/fc84e7e0-8dd3-4b66-8c04-1eb4bb033c27"; }
-    ];
-
+  # Windows data drives (NTFS, untouched by the reinstall).
   fileSystems."/mnt/c" =
     { device = "/dev/disk/by-uuid/80F83B63F83B571E";
       fsType = "ntfs-3g";
@@ -40,21 +79,7 @@
       options = [ "rw" "uid=1000" ];
     };
 
-  fileSystems."/mnt/morenix" = {
-    device = "/dev/disk/by-uuid/3321b18a-8fdc-4a23-9236-02a74ce9a856";
-    fsType = "ext4";
-    neededForBoot = true;
-    options = [ "noatime" ];
-  };
-
-
-  fileSystems."/nix" = {
-    fsType = "none";
-    depends = [ "/mnt/morenix" ];
-    device = "/mnt/morenix/nix";
-    neededForBoot = true;
-    options = [ "bind" ];
-  };
+  # Swap is provided by zram (configuration.nix); no on-disk swap.
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
