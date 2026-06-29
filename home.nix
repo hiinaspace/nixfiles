@@ -67,6 +67,14 @@
     # '';
   };
 
+  # Relocate VRChat's camera photos out of the disposable Proton prefix into
+  # ~/Pictures/VRChat so they survive prefix/Steam wipes (and are backed up without
+  # dragging the prefix cache along). https://wiki.vronlinux.org/docs/vrchat/pictures/
+  # One-time migration of any existing photos is done outside HM; this just keeps the
+  # in-prefix path pointing at the real directory.
+  home.file.".local/share/Steam/steamapps/compatdata/438100/pfx/drive_c/users/steamuser/Pictures/VRChat".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Pictures/VRChat";
+
   # https://lvra.gitlab.io/docs/distros/nixos/#recommendations
   # Tell the OpenVR loader (inside Proton/Wine) to use xrizer as the runtime.
   # xrizer bridges OpenVR → OpenXR → Monado.

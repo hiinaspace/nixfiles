@@ -52,13 +52,36 @@
         "/home/s/invokeai/models"
         # regenerable map export output
         "/home/s/mapgen-run"
-        # Steam: keep userdata/config (saves), drop re-downloadable game payloads
+        # Steam: keep userdata (saves/screenshots) + compatdata (local game saves);
+        # everything else is re-fetched on reinstall. See restic/borg community lists.
+        # games + per-game caches
         "/home/s/.local/share/Steam/steamapps/common"
         "/home/s/.local/share/Steam/steamapps/downloading"
         "/home/s/.local/share/Steam/steamapps/shadercache"
         "/home/s/.local/share/Steam/steamapps/workshop"
+        "/home/s/.local/share/Steam/steamapps/temp"
+        # Steam client runtime (re-downloaded on first launch)
         "/home/s/.local/share/Steam/ubuntu12_32"
         "/home/s/.local/share/Steam/ubuntu12_64"
+        "/home/s/.local/share/Steam/steamrt64"
+        "/home/s/.local/share/Steam/steamrt32"
+        "/home/s/.local/share/Steam/package"
+        "/home/s/.local/share/Steam/steamui"
+        "/home/s/.local/share/Steam/clientui"
+        "/home/s/.local/share/Steam/linux32"
+        "/home/s/.local/share/Steam/linux64"
+        "/home/s/.local/share/Steam/legacycompat"
+        # Steam client caches / logs
+        "/home/s/.local/share/Steam/appcache"
+        "/home/s/.local/share/Steam/depotcache"
+        "/home/s/.local/share/Steam/logs"
+        "/home/s/.local/share/Steam/dumps"
+        "/home/s/.local/share/Steam/config/htmlcache"
+        # regenerable caches *inside* Proton prefixes (keep saves/configs alongside):
+        # DXVK shader state, and VRChat's world/texture caches (account-based game,
+        # so LocalAvatarData / worldconfig / LocalPlayerModerations are kept).
+        "sh:**/pfx/drive_c/users/steamuser/AppData/Local/dxvk"
+        "sh:**/LocalLow/VRChat/VRChat/*Cache-WindowsPlayer"
         # browser caches (keep the profile: bookmarks, saved logins, sessions)
         "sh:/home/s/.mozilla/firefox/*/cache2"
         "sh:/home/s/.mozilla/firefox/*/storage/**/cache"
