@@ -476,6 +476,10 @@ in
   # with the btrfs reinstall). No hibernate.
   zramSwap.enable = true;
 
+  # /etc/nixos -> the flake repo in /home (persistent). Declarative so it survives
+  # the per-boot impermanence wipe of /etc; the repo itself lives on @home.
+  environment.etc."nixos".source = "/home/s/nixos-config";
+
 
   hardware.bluetooth = {
     enable = true;
