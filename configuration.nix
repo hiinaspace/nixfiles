@@ -369,6 +369,9 @@ in
   environment.sessionVariables.PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES = "1";
   # Make xrizer's OpenXR runtime lookup explicit for Proton/OpenVR games.
   environment.sessionVariables.XR_RUNTIME_JSON = "/run/current-system/sw/share/openxr/1/openxr_monado.json";
+  # xrizer checks this directory for <controller>.json before using a game's
+  # bundled SteamVR bindings.
+  environment.sessionVariables.XRIZER_CUSTOM_BINDINGS_DIR = "/home/s/.config/xrizer/bindings";
   # Expose /nix store paths inside pressure-vessel so that openvrpaths.vrpath
   # (which references xrizer's nix store path) can be resolved by Proton.
   environment.sessionVariables.PRESSURE_VESSEL_FILESYSTEMS_RO = "/nix:/run/current-system";

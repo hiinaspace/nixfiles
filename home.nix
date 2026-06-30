@@ -74,6 +74,19 @@
   home.file.".local/share/Steam/steamapps/compatdata/438100/pfx/drive_c/users/steamuser/Pictures/VRChat".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Pictures/VRChat";
 
+  # Keep the customized xrizer/SteamVR bindings for Valve Index controllers out
+  # of Steam's disposable app payload. xrizer reads this parent SteamVR binding
+  # file for VRChat, not the adjacent SteamVR/xrizer/knuckles.json.
+  home.file.".local/share/Steam/steamapps/common/VRChat/VRChat_Data/StreamingAssets/SteamVR/bindings_knuckles.json" = {
+    source = ./steamvr/vrchat/bindings_knuckles.json;
+    force = true;
+  };
+
+  # xrizer checks XRIZER_CUSTOM_BINDINGS_DIR/<controller>.json before falling
+  # back to the binding_url from VRChat's action manifest.
+  xdg.configFile."xrizer/bindings/knuckles.json".source =
+    ./steamvr/vrchat/bindings_knuckles.json;
+
   # https://lvra.gitlab.io/docs/distros/nixos/#recommendations
   # Tell the OpenVR loader (inside Proton/Wine) to use xrizer as the runtime.
   # xrizer bridges OpenVR → OpenXR → Monado.
