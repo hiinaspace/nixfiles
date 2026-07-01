@@ -34,6 +34,7 @@
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
+    pkgs.pre-commit
     pkgs.obsidian
     pkgs.btop
     pkgs.jq
