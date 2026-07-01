@@ -49,6 +49,32 @@
     pkgs.swappy
     pkgs.grim
     pkgs.slurp
+    (pkgs.writeShellScriptBin "llama-unload" ''
+      set -euo pipefail
+      loaded=$(${pkgs.curl}/bin/curl -s http://127.0.0.1:11434/v1/models \
+        | ${pkgs.jq}/bin/jq -r '.data[] | select(.status.value == "loaded") | .id')
+      if [ -z "$loaded" ]; then
+        echo "no model currently loaded"
+        exit 0
+      fi
+      for m in $loaded; do
+        echo "unloading $m"
+        ${pkgs.curl}/bin/curl -s -X POST http://127.0.0.1:11434/models/unload \
+          -H "Content-Type: application/json" -d "{\"model\":\"$m\"}"
+        echo
+      done
+    '')
+    (pkgs.writeShellScriptBin "llama-status" ''
+      set -euo pipefail
+      loaded=$(${pkgs.curl}/bin/curl -s http://127.0.0.1:11434/v1/models \
+        | ${pkgs.jq}/bin/jq -r '.data[] | select(.status.value == "loaded") | .id')
+      if [ -z "$loaded" ]; then
+        echo "no model loaded"
+      else
+        echo "loaded models:"
+        echo "$loaded"
+      fi
+    '')
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -115,34 +141,26 @@
   xdg.configFile."opencode/opencode.json".text = ''
     {
       "$schema": "https://opencode.ai/config.json",
-      "model": "ollama/gemma4:31b",
-      "small_model": "ollama/gemma4:e4b",
+      "model": "llama-cpp/qwen3.6-35b-a3b",
       "provider": {
-        "ollama": {
+        "llama-cpp": {
           "npm": "@ai-sdk/openai-compatible",
-          "name": "Ollama (local)",
+          "name": "llama.cpp (local)",
           "options": {
             "baseURL": "http://127.0.0.1:11434/v1"
           },
           "models": {
-            "gemma4:31b": {
-              "name": "Gemma 4 31B (Ollama)",
+            "qwen3.6-35b-a3b": {
+              "name": "Qwen3.6 35B-A3B (llama.cpp)",
               "limit": {
-                "context": 32768,
-                "output": 8192
+                "context": 98304,
+                "output": 16384
               }
             },
-            "gemma4:26b": {
-              "name": "Gemma 4 26B A4B (Ollama)",
+            "gemma-4-e4b": {
+              "name": "Gemma4 E4B (llama.cpp)",
               "limit": {
-                "context": 32768,
-                "output": 8192
-              }
-            },
-            "gemma4:e4b": {
-              "name": "Gemma 4 E4B (Ollama)",
-              "limit": {
-                "context": 32768,
+                "context": 65536,
                 "output": 8192
               }
             }

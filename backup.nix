@@ -46,7 +46,6 @@
         "/home/s/.local/share/uv"
         "/home/s/.local/share/NuGet"
         # re-downloadable model weights
-        "/home/s/.ollama"
         "/home/s/SwarmUI/Models"
         "/home/s/SwarmUI/dlbackend"
         "/home/s/invokeai/models"

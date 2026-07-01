@@ -35,6 +35,8 @@ let
     noCheck = true;
     options = chirashiSshfsOptions;
   };
+
+  llama-cpp-cuda = pkgs.llama-cpp.override { cudaSupport = true; };
 in
 {
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -269,17 +271,30 @@ in
     "/mnt/s/comfyuimodels"
   ];
 
-  services.ollama = {
-    enable = true;
-    package = pkgs.ollama-cuda;
-    host = "127.0.0.1";
-    port = 11434;
-    loadModels = [
-      "gemma4:e4b"
-      "gemma4:31b"
-    ];
-    environmentVariables = {
-      OLLAMA_CONTEXT_LENGTH = "32768";
+  # llama.cpp router mode: serves Qwen3.6-35B-A3B (MoE, 3B active params, Q4_K_XL,
+  # 12 expert layers offloaded to CPU RAM - ~105-110 tok/s gen, ~1700 tok/s pp,
+  # 98k context in ~20.4GB VRAM) and Gemma4 E4B (small model for quick one-off
+  # tasks, ~7.5GB VRAM) from one process. --models-max 1 means only one model is
+  # resident at a time - the router evicts the LRU model and loads the requested
+  # one on demand (Ollama-style hot-swap), confirmed ~5-10s per swap. Per-model
+  # settings live in router-presets.ini alongside the model weights. Exposes both
+  # an OpenAI-compatible API (for opencode, at /v1) and a native Anthropic Messages
+  # API (for Claude Code, at /v1/messages) - no proxy needed for either.
+  systemd.services.llama-server = {
+    description = "llama.cpp server (router: Qwen3.6-35B-A3B / Gemma4 E4B)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      ExecStart = ''
+        ${llama-cpp-cuda}/bin/llama-server \
+          --models-dir /home/s/.cache/llama-models \
+          --models-preset /home/s/.cache/llama-models/router-presets.ini \
+          --models-max 1 \
+          --host 127.0.0.1 --port 11434
+      '';
+      Restart = "on-failure";
+      User = "s";
+      Group = "users";
     };
   };
 
