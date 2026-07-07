@@ -189,7 +189,7 @@
   #  /etc/profiles/per-user/s/etc/profile.d/hm-session-vars.sh
   #
   home.sessionVariables = {
-    # EDITOR = "emacs";
+    EDITOR = "nvim";
   };
 
   # Let Home Manager install and manage itself.
@@ -266,6 +266,9 @@
   # Hand-authored configs, version-controlled in ./dotfiles and deployed verbatim as
   # store symlinks. Edit the repo copy and `home-manager switch` to apply.
   xdg.configFile."sway/config".source = ./dotfiles/sway/config;
+  # niri config (KDL). Added alongside sway; niri itself is enabled via
+  # programs.niri in configuration.nix.
+  xdg.configFile."niri/config.kdl".source = ./dotfiles/niri/config.kdl;
   xdg.configFile."mpv/scripts/webm.lua".source = ./dotfiles/mpv/scripts/webm.lua;
   xdg.configFile."waybar/config.jsonc".source = ./dotfiles/waybar/config.jsonc;
   xdg.configFile."waybar/style.css".source = ./dotfiles/waybar/style.css;

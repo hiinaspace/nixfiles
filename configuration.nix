@@ -404,6 +404,7 @@ in
     slurp # more screenshot
     wl-clipboard # wayland clipboard
     xclip # xwayland clipboard bridge
+    xwayland-satellite # X11 support for niri; niri >=25.08 auto-spawns it on-demand when in PATH
     mako # sway notifications
     element-desktop
     #factorio-space-age
@@ -428,7 +429,15 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd 'sway --unsupported-gpu'";
+        # Default (just press Enter) stays the working sway command with the
+        # NVIDIA `--unsupported-gpu` flag. `--sessions` adds a selectable session
+        # menu (toggle in tuigreet) populated from the registered Wayland sessions
+        # (programs.niri adds niri.desktop there), so niri is pickable without
+        # touching sway's default path.
+        # CAVEAT: the menu's plain "sway" entry (from programs.sway) lacks
+        # `--unsupported-gpu`; for sway just press Enter to use this default cmd,
+        # and select "niri" from the menu when you want niri.
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --cmd 'sway --unsupported-gpu'";
         user = "greeter";
       };
     };
@@ -489,6 +498,22 @@ in
     enable = true;
     wrapperFeatures.gtk = true;
   };
+
+  # niri, added alongside sway (groundwork for the viri project). programs.niri
+  # (nixos-unstable) installs the package, registers the Wayland session via
+  # services.displayManager.sessionPackages so the greeter can launch it, wires
+  # systemd user units, and sets up portals. Config lives in ~/.config/niri/
+  # config.kdl (deployed from dotfiles/niri via home.nix).
+  programs.niri = {
+    enable = true;
+    # Don't pull in GNOME Nautilus as the file chooser; we use pikeru (below),
+    # matching the sway session.
+    useNautilus = false;
+  };
+  # Route niri's FileChooser portal to pikeru, mirroring config.sway above.
+  # programs.niri (with useNautilus=false) already sets this key to "gtk", so
+  # mkForce is needed to override that into pikeru.
+  xdg.portal.config.niri."org.freedesktop.impl.portal.FileChooser" = lib.mkForce [ "pikeru" ];
 
   # https://nixos.wiki/wiki/Fish
   programs.fish.enable = true;

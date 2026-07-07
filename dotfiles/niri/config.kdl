@@ -1,0 +1,267 @@
+// Niri config for sayu, ported from the sway config (../sway/config).
+// KDL format: https://kdl.dev  -- see the niri wiki for the full reference:
+// https://yalter.github.io/niri/Configuration:-Introduction
+//
+// PORT NOTES (sway -> niri):
+// - sway's $mod was Mod1 (Alt) -- his UHK "window hold" button emits Alt, so we
+//   keep Alt as the WM modifier here (NOT niri's special "Mod", which is Super on
+//   a TTY). Every bind below uses Alt to preserve muscle memory.
+// - niri is column/scroll based (like scroll, which he already uses): left/right
+//   move between *columns*, up/down move between *windows stacked in a column*.
+// - Anything with no clean niri equivalent is left as a `// TODO:` below.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Input  (sway: `focus_follows_mouse no`, no touchpad/keyboard tuning)
+// ─────────────────────────────────────────────────────────────────────────────
+input {
+    keyboard {
+        xkb {
+            // sway used the system default layout; leaving this empty makes niri
+            // fetch xkb settings from org.freedesktop.locale1 (localectl), same idea.
+        }
+        // sway didn't force numlock; leave it to firmware/BIOS. Uncomment to force on:
+        // numlock
+    }
+
+    // Desktop machine, no touchpad configured in sway; leaving mouse/touchpad at
+    // defaults (no accel override, matches sway which set none).
+
+    // sway had `focus_follows_mouse no` (annoying on the wayvr overlay). niri's
+    // focus-follows-mouse is OFF by default, so we simply do NOT enable it here.
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Outputs  (sway: `output DP-5 {...}` / `output DP-6 {...}`)
+// Positions are LOGICAL (scaled) pixels in both sway and niri, so they carry over.
+// DP-5 at scale 1.5 => logical 2560x1440, so DP-6 sits at x=2560 to its right.
+// ─────────────────────────────────────────────────────────────────────────────
+output "DP-5" {
+    mode "3840x2160"
+    scale 1.5
+    position x=0 y=0
+    // sway had `render_bit_depth 8` (10-bit caused Steam issues). niri renders
+    // 8-bit by default, so no key is needed. (10-bit would be opt-in.)
+}
+
+output "DP-6" {
+    mode "2560x1440"
+    position x=2560 y=-510
+    // sway `transform 90` = 90 deg CLOCKWISE. niri transforms are COUNTER-clockwise,
+    // so sway's 90 maps to niri "270". VERIFY the rotation looks right; if it's
+    // upside-from-expected, swap to "90".
+    transform "270"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cursor  (home.nix sets pointerCursor Adwaita/24 with sway.enable=true, which
+// does NOT cover niri, so pin it here to match.)
+// ─────────────────────────────────────────────────────────────────────────────
+cursor {
+    xcursor-theme "Adwaita"
+    xcursor-size 24
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layout / appearance
+// sway used `default_border pixel` + `hide_edge_borders smart_no_gaps` (thin
+// borders, no gaps) and red-on-black focus colors (client.focused #cc0000).
+// niri has no titlebars; we express the focus color via the focus ring.
+// ─────────────────────────────────────────────────────────────────────────────
+layout {
+    // sway configured no gaps; a small gap keeps niri legible. Set to 0 to match
+    // sway exactly.
+    gaps 8
+
+    center-focused-column "never"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width { proportion 0.5; }
+
+    // Red focus ring to mirror sway's client.focused border (#cc0000 on #600000).
+    focus-ring {
+        width 3
+        active-color "#cc0000"
+        inactive-color "#600000"
+    }
+
+    // sway drew only a thin pixel border; keep niri's separate border off and rely
+    // on the focus ring above.
+    border {
+        off
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Startup  (sway: `exec`/`exec_always` and `bar swaybar_command waybar`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// sway ran waybar as its bar. NOTE: his waybar config.jsonc uses sway/workspaces,
+// sway/mode and sway/window modules, which need swaymsg and will NOT populate
+// under niri. waybar still launches; see the report for the niri/* module swap.
+spawn-at-startup "waybar"
+
+// sway idle: `swayidle -w timeout 600 'swaymsg "output * power off"' resume ...`.
+// swaymsg doesn't exist under niri, so drive niri's own power-off action instead.
+// niri turns monitors back on automatically on any input, so no explicit resume.
+spawn-at-startup "swayidle" "-w" "timeout" "600" "niri msg action power-off-monitors"
+
+// screenshots land here (niri's built-in screenshot also copies to the clipboard,
+// which is all his sway grim|wl-copy binds did).
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+hotkey-overlay {
+    // sway had no such popup; skip niri's startup hotkey overlay.
+    skip-at-startup
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Window rules  (sway: `for_window [...]`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// pikeru file picker (launched by xdg-desktop-portal, title "File Picker", no
+// app_id). sway floated it and pulled it to the current workspace so it didn't
+// tile off-screen on another monitor. niri opens floating windows on the active
+// workspace, centered, by default -- so open-floating covers it.
+window-rule {
+    match title="^File Picker$"
+    open-floating true
+}
+
+// TODO(sway->niri): `for_window [class="Firefox" window_role="alert"] floating enable`
+// and `no_focus [window_role="alert"]`. niri matches on app-id/title only; it has
+// no window_role matcher (an X11 concept) and no no_focus rule. No faithful port.
+
+// TODO(sway->niri): `focus_on_window_activation focus` (obsidian web-clipper
+// workaround). niri has no config knob to auto-focus windows that request
+// activation; it surfaces them as "urgent" instead. No faithful port.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Key bindings  (sway `bindsym`; $mod = Alt, home row h/j/k/l like vim)
+// ─────────────────────────────────────────────────────────────────────────────
+binds {
+    // --- Basics ---
+    Alt+Return       hotkey-overlay-title="Terminal: kitty" { spawn "kitty" "--single-instance"; }
+    Alt+Shift+Return hotkey-overlay-title="Firefox" { spawn "firefox"; }
+    Alt+Shift+Q      { close-window; }              // sway: $mod+Shift+q kill
+    Alt+D            hotkey-overlay-title="Launcher: wmenu-run" { spawn "wmenu-run"; }
+
+    // sway `$mod+Shift+e` ran a swaynag confirm-exit; niri's quit shows its own
+    // confirmation dialog.
+    Alt+Shift+E      { quit; }
+
+    // TODO(sway->niri): `$mod+Shift+c reload`. niri hot-reloads config.kdl on save
+    // automatically, so there's no reload keybind to port.
+
+    // --- Focus (sway: focus left/down/up/right) ---
+    // left/right = columns, down/up = windows within a column (niri's model).
+    Alt+H     { focus-column-left; }
+    Alt+J     { focus-window-down; }
+    Alt+K     { focus-window-up; }
+    Alt+L     { focus-column-right; }
+    Alt+Left  { focus-column-left; }
+    Alt+Down  { focus-window-down; }
+    Alt+Up    { focus-window-up; }
+    Alt+Right { focus-column-right; }
+
+    // --- Move (sway: $mod+Shift+{h,j,k,l}/arrows move) ---
+    Alt+Shift+H     { move-column-left; }
+    Alt+Shift+J     { move-window-down; }
+    Alt+Shift+K     { move-window-up; }
+    Alt+Shift+L     { move-column-right; }
+    Alt+Shift+Left  { move-column-left; }
+    Alt+Shift+Down  { move-window-down; }
+    Alt+Shift+Up    { move-window-up; }
+    Alt+Shift+Right { move-column-right; }
+
+    // --- Workspaces (sway: $mod+N switch, $mod+Shift+N move) ---
+    // NOTE: niri workspaces are dynamic and per-monitor, unlike sway's flat global
+    // numbered set. Index-based focus still works (best-effort). $mod+0 -> ws 10.
+    Alt+1 { focus-workspace 1; }
+    Alt+2 { focus-workspace 2; }
+    Alt+3 { focus-workspace 3; }
+    Alt+4 { focus-workspace 4; }
+    Alt+5 { focus-workspace 5; }
+    Alt+6 { focus-workspace 6; }
+    Alt+7 { focus-workspace 7; }
+    Alt+8 { focus-workspace 8; }
+    Alt+9 { focus-workspace 9; }
+    Alt+0 { focus-workspace 10; }
+    Alt+Shift+1 { move-column-to-workspace 1; }
+    Alt+Shift+2 { move-column-to-workspace 2; }
+    Alt+Shift+3 { move-column-to-workspace 3; }
+    Alt+Shift+4 { move-column-to-workspace 4; }
+    Alt+Shift+5 { move-column-to-workspace 5; }
+    Alt+Shift+6 { move-column-to-workspace 6; }
+    Alt+Shift+7 { move-column-to-workspace 7; }
+    Alt+Shift+8 { move-column-to-workspace 8; }
+    Alt+Shift+9 { move-column-to-workspace 9; }
+    Alt+Shift+0 { move-column-to-workspace 10; }
+
+    // sway `$mod+c workspace back_and_forth` (+ `workspace_auto_back_and_forth yes`).
+    // niri has focus-workspace-previous; the *auto* back-and-forth global setting
+    // has no niri equivalent (see TODO in report).
+    Alt+C { focus-workspace-previous; }
+
+    // --- Layout / fullscreen (sway: layout stuff) ---
+    // sway `$mod+f fullscreen` = true fullscreen -> fullscreen-window.
+    Alt+F { fullscreen-window; }
+    // sway `$mod+w layout tabbed` -> niri tabbed column display.
+    Alt+W { toggle-column-tabbed-display; }
+    // sway `$mod+Shift+space floating toggle`
+    Alt+Shift+Space { toggle-window-floating; }
+    // sway `$mod+space focus mode_toggle` (swap tiling<->floating focus)
+    Alt+Space { switch-focus-between-floating-and-tiling; }
+
+    // TODO(sway->niri, no equivalent):
+    //   $mod+b splith / $mod+v splitv  -> niri has no h/v split (column model)
+    //   $mod+s layout stacking         -> niri has tabbed columns but no "stacking"
+    //   $mod+e layout toggle split     -> no split modes in niri
+    //   $mod+a focus parent            -> niri has no parent containers (flat columns)
+
+    // --- Resize (sway had a dedicated `resize` mode on $mod+r) ---
+    // niri has no modes. Closest single-key: cycle preset column widths.
+    Alt+R       { switch-preset-column-width; }
+    Alt+Shift+R { switch-preset-column-width-back; }
+    // Finer resize, reusing sway's (now-unavailable) scratchpad keys $mod+minus /
+    // $mod+Shift+minus. niri has NO scratchpad, so those keys are free -- see TODO.
+    Alt+Minus       { set-column-width "-10%"; }
+    Alt+Equal       { set-column-width "+10%"; }
+    Alt+Shift+Minus { set-window-height "-10%"; }
+    Alt+Shift+Equal { set-window-height "+10%"; }
+
+    // TODO(sway->niri, no equivalent): scratchpad. sway used
+    //   $mod+Shift+minus move scratchpad / $mod+minus scratchpad show.
+    // niri has no scratchpad concept. (Keys reused for resize above.)
+
+    // --- Multi-monitor (sway: $mod+m / $mod+Shift+m to the right output) ---
+    Alt+M       { focus-monitor-right; }
+    Alt+Shift+M { move-workspace-to-monitor-right; }
+
+    // --- Passthrough (sway: `mode "passthrough"` toggled with $mod+u) ---
+    // niri's nearest is the keyboard-shortcuts inhibitor. NOTE: this only takes
+    // effect while a client that requested shortcut inhibition is focused; it's
+    // not a blanket global passthrough like sway's mode.
+    Alt+U allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+
+    // --- Screenshots (sway: grim -g "$(slurp)" | wl-copy) ---
+    // niri's built-in screenshot is interactive region select -> clipboard (+disk).
+    Alt+Q { screenshot; }
+    Print { screenshot; }
+
+    // --- Media / brightness keys (sway: --locked ... pactl / brightnessctl) ---
+    // `--locked` -> `allow-when-locked=true`. Kept pactl (his choice), not wpctl.
+    XF86AudioMute        allow-when-locked=true { spawn "pactl" "set-sink-mute" "@DEFAULT_SINK@" "toggle"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "pactl" "set-sink-volume" "@DEFAULT_SINK@" "-5%"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "pactl" "set-sink-volume" "@DEFAULT_SINK@" "+5%"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "pactl" "set-source-mute" "@DEFAULT_SOURCE@" "toggle"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
+
+    // Escape hatch to release the shortcut inhibitor (niri-recommended).
+    Alt+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+}
