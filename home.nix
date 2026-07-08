@@ -50,6 +50,9 @@
     pkgs.swappy
     pkgs.grim
     pkgs.slurp
+    # Terminal session persistence (attach/detach). Not in nixpkgs; packaged
+    # locally from the upstream static release — see ./zmx.nix.
+    (pkgs.callPackage ./zmx.nix { })
     (pkgs.writeShellScriptBin "llama-unload" ''
       set -euo pipefail
       loaded=$(${pkgs.curl}/bin/curl -s http://127.0.0.1:11434/v1/models \
