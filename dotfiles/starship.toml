@@ -4,6 +4,7 @@ add_newline = true
 continuation_prompt = "[▸▹ ](dimmed white)"
 
 format = """($nix_shell$container$fill$git_metrics\n)$cmd_duration\
+${env_var.ZMX_SESSION}\
 $hostname\
 $localip\
 $shlvl\
@@ -100,6 +101,12 @@ vimcmd_symbol = "[■](italic dimmed green)"
 vimcmd_replace_one_symbol = "◌"
 vimcmd_replace_symbol = "□"
 vimcmd_visual_symbol = "▼"
+
+[env_var.ZMX_SESSION]
+symbol = " "
+format = "[$symbol$env_value]($style) "
+description = "zmx session name"
+style = "bold magenta"
 
 [env_var.VIMSHELL]
 format = "[$env_value]($style)"

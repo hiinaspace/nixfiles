@@ -271,7 +271,12 @@
   xdg.configFile."sway/config".source = ./dotfiles/sway/config;
   # niri config (KDL). Added alongside sway; niri itself is enabled via
   # programs.niri in configuration.nix.
-  xdg.configFile."niri/config.kdl".source = ./dotfiles/niri/config.kdl;
+  # TEMPORARY (hot iteration): out-of-store symlink to the live repo file so
+  # edits are picked up by niri's autoreload without a rebuild. Restore to the
+  # plain `source = ./dotfiles/niri/config.kdl;` (store copy) once the config
+  # settles.
+  xdg.configFile."niri/config.kdl".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos-config/dotfiles/niri/config.kdl";
   xdg.configFile."mpv/scripts/webm.lua".source = ./dotfiles/mpv/scripts/webm.lua;
   xdg.configFile."waybar/config.jsonc".source = ./dotfiles/waybar/config.jsonc;
   xdg.configFile."waybar/style.css".source = ./dotfiles/waybar/style.css;
