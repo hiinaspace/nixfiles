@@ -1,11 +1,14 @@
-// Niri config for sayu, ported from the sway config (../sway/config).
+// Niri config for sayu, originally ported from the sway config (../sway/config).
 // KDL format: https://kdl.dev  -- see the niri wiki for the full reference:
 // https://yalter.github.io/niri/Configuration:-Introduction
 //
-// PORT NOTES (sway -> niri):
-// - sway's $mod was Mod1 (Alt) -- his UHK "window hold" button emits Alt, so we
-//   keep Alt as the WM modifier here (NOT niri's special "Mod", which is Super on
-//   a TTY). Every bind below uses Alt to preserve muscle memory.
+// KEYBINDS: the `binds` block below now follows niri's own upstream defaults
+// (https://github.com/niri-wm/niri/wiki/Getting-Started and
+// resources/default-config.kdl), not the ported sway binds -- niri's scheme
+// covers more than the original sway config did (per-column/window resize
+// presets, consume/expel, overview, real maximize, etc). The only deviation
+// from upstream is the modifier: `Mod` (Super on a TTY) is swapped for Alt
+// throughout, since his UHK "window hold" button emits Alt.
 // - niri is column/scroll based (like scroll, which he already uses): left/right
 //   move between *columns*, up/down move between *windows stacked in a column*.
 // - Anything with no clean niri equivalent is left as a `// TODO:` below.
@@ -68,23 +71,21 @@ cursor {
 // niri has no titlebars; we express the focus color via the focus ring.
 // ─────────────────────────────────────────────────────────────────────────────
 layout {
-    // sway configured no gaps; a small gap keeps niri legible. Set to 0 to match
-    // sway exactly.
-    gaps 8
+    gaps 0
 
     center-focused-column "never"
 
     preset-column-widths {
         proportion 0.33333
         proportion 0.5
-        proportion 0.66667
+        proportion 1.0
     }
 
     default-column-width { proportion 0.5; }
 
     // Red focus ring to mirror sway's client.focused border (#cc0000 on #600000).
     focus-ring {
-        width 3
+        width 1
         active-color "#cc0000"
         inactive-color "#600000"
     }
@@ -141,46 +142,96 @@ window-rule {
 // activation; it surfaces them as "urgent" instead. No faithful port.
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Key bindings  (sway `bindsym`; $mod = Alt, home row h/j/k/l like vim)
+// Key bindings -- niri upstream defaults, with Mod = Alt.
+// (resources/default-config.kdl, https://github.com/niri-wm/niri/wiki/Getting-Started)
 // ─────────────────────────────────────────────────────────────────────────────
 binds {
-    // --- Basics ---
-    Alt+Return       hotkey-overlay-title="Terminal: kitty" { spawn "kitty" "--single-instance"; }
-    Alt+Shift+Return hotkey-overlay-title="Firefox" { spawn "firefox"; }
-    Alt+Shift+Q      { close-window; }              // sway: $mod+Shift+q kill
+    Alt+Shift+Slash { show-hotkey-overlay; }
+
+    // --- Basics --- (spawn commands are ours; upstream default spawns alacritty/fuzzel)
+    Alt+T            hotkey-overlay-title="Terminal: kitty" { spawn "kitty" "--single-instance"; }
     Alt+D            hotkey-overlay-title="Launcher: wmenu-run" { spawn "wmenu-run"; }
+    Alt+Shift+Return hotkey-overlay-title="Firefox" { spawn "firefox"; }
 
-    // sway `$mod+Shift+e` ran a swaynag confirm-exit; niri's quit shows its own
-    // confirmation dialog.
-    Alt+Shift+E      { quit; }
+    Alt+O repeat=false { toggle-overview; }
+    Alt+Q repeat=false { close-window; }
 
-    // TODO(sway->niri): `$mod+Shift+c reload`. niri hot-reloads config.kdl on save
-    // automatically, so there's no reload keybind to port.
-
-    // --- Focus (sway: focus left/down/up/right) ---
-    // left/right = columns, down/up = windows within a column (niri's model).
-    Alt+H     { focus-column-left; }
-    Alt+J     { focus-window-down; }
-    Alt+K     { focus-window-up; }
-    Alt+L     { focus-column-right; }
+    // --- Focus (left/right = columns, up/down = windows within a column) ---
     Alt+Left  { focus-column-left; }
     Alt+Down  { focus-window-down; }
     Alt+Up    { focus-window-up; }
     Alt+Right { focus-column-right; }
+    Alt+H     { focus-column-left; }
+    Alt+J     { focus-window-down; }
+    Alt+K     { focus-window-up; }
+    Alt+L     { focus-column-right; }
 
-    // --- Move (sway: $mod+Shift+{h,j,k,l}/arrows move) ---
-    Alt+Shift+H     { move-column-left; }
-    Alt+Shift+J     { move-window-down; }
-    Alt+Shift+K     { move-window-up; }
-    Alt+Shift+L     { move-column-right; }
-    Alt+Shift+Left  { move-column-left; }
-    Alt+Shift+Down  { move-window-down; }
-    Alt+Shift+Up    { move-window-up; }
-    Alt+Shift+Right { move-column-right; }
+    // --- Move ---
+    Alt+Ctrl+Left  { move-column-left; }
+    Alt+Ctrl+Down  { move-window-down; }
+    Alt+Ctrl+Up    { move-window-up; }
+    Alt+Ctrl+Right { move-column-right; }
+    Alt+Ctrl+H     { move-column-left; }
+    Alt+Ctrl+J     { move-window-down; }
+    Alt+Ctrl+K     { move-window-up; }
+    Alt+Ctrl+L     { move-column-right; }
 
-    // --- Workspaces (sway: $mod+N switch, $mod+Shift+N move) ---
-    // NOTE: niri workspaces are dynamic and per-monitor, unlike sway's flat global
-    // numbered set. Index-based focus still works (best-effort). $mod+0 -> ws 10.
+    Alt+Home { focus-column-first; }
+    Alt+End  { focus-column-last; }
+    Alt+Ctrl+Home { move-column-to-first; }
+    Alt+Ctrl+End  { move-column-to-last; }
+
+    // --- Multi-monitor (was Alt+M/Alt+Shift+M; M is now maximize below) ---
+    Alt+Shift+Left  { focus-monitor-left; }
+    Alt+Shift+Down  { focus-monitor-down; }
+    Alt+Shift+Up    { focus-monitor-up; }
+    Alt+Shift+Right { focus-monitor-right; }
+    Alt+Shift+H     { focus-monitor-left; }
+    Alt+Shift+J     { focus-monitor-down; }
+    Alt+Shift+K     { focus-monitor-up; }
+    Alt+Shift+L     { focus-monitor-right; }
+
+    Alt+Ctrl+Shift+Left  { move-column-to-monitor-left; }
+    Alt+Ctrl+Shift+Down  { move-column-to-monitor-down; }
+    Alt+Ctrl+Shift+Up    { move-column-to-monitor-up; }
+    Alt+Ctrl+Shift+Right { move-column-to-monitor-right; }
+    Alt+Ctrl+Shift+H     { move-column-to-monitor-left; }
+    Alt+Ctrl+Shift+J     { move-column-to-monitor-down; }
+    Alt+Ctrl+Shift+K     { move-column-to-monitor-up; }
+    Alt+Ctrl+Shift+L     { move-column-to-monitor-right; }
+
+    // --- Workspaces (dynamic, per-monitor -- unlike sway's flat global set) ---
+    Alt+Page_Down      { focus-workspace-down; }
+    Alt+Page_Up        { focus-workspace-up; }
+    Alt+U              { focus-workspace-down; }
+    Alt+I              { focus-workspace-up; }
+    Alt+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Alt+Ctrl+Page_Up   { move-column-to-workspace-up; }
+    Alt+Ctrl+U         { move-column-to-workspace-down; }
+    Alt+Ctrl+I         { move-column-to-workspace-up; }
+
+    Alt+Shift+Page_Down { move-workspace-down; }
+    Alt+Shift+Page_Up   { move-workspace-up; }
+    Alt+Shift+U         { move-workspace-down; }
+    Alt+Shift+I         { move-workspace-up; }
+
+    Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    Alt+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Alt+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+
+    Alt+WheelScrollRight      { focus-column-right; }
+    Alt+WheelScrollLeft       { focus-column-left; }
+    Alt+Ctrl+WheelScrollRight { move-column-right; }
+    Alt+Ctrl+WheelScrollLeft  { move-column-left; }
+
+    Alt+Shift+WheelScrollDown      { focus-column-right; }
+    Alt+Shift+WheelScrollUp        { focus-column-left; }
+    Alt+Ctrl+Shift+WheelScrollDown { move-column-right; }
+    Alt+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+
+    // Index-based workspace focus (best-effort -- niri workspaces are dynamic).
+    // Alt+0 -> ws 10 kept from the old sway-style config; not part of upstream default.
     Alt+1 { focus-workspace 1; }
     Alt+2 { focus-workspace 2; }
     Alt+3 { focus-workspace 3; }
@@ -191,67 +242,66 @@ binds {
     Alt+8 { focus-workspace 8; }
     Alt+9 { focus-workspace 9; }
     Alt+0 { focus-workspace 10; }
-    Alt+Shift+1 { move-column-to-workspace 1; }
-    Alt+Shift+2 { move-column-to-workspace 2; }
-    Alt+Shift+3 { move-column-to-workspace 3; }
-    Alt+Shift+4 { move-column-to-workspace 4; }
-    Alt+Shift+5 { move-column-to-workspace 5; }
-    Alt+Shift+6 { move-column-to-workspace 6; }
-    Alt+Shift+7 { move-column-to-workspace 7; }
-    Alt+Shift+8 { move-column-to-workspace 8; }
-    Alt+Shift+9 { move-column-to-workspace 9; }
-    Alt+Shift+0 { move-column-to-workspace 10; }
+    Alt+Ctrl+1 { move-column-to-workspace 1; }
+    Alt+Ctrl+2 { move-column-to-workspace 2; }
+    Alt+Ctrl+3 { move-column-to-workspace 3; }
+    Alt+Ctrl+4 { move-column-to-workspace 4; }
+    Alt+Ctrl+5 { move-column-to-workspace 5; }
+    Alt+Ctrl+6 { move-column-to-workspace 6; }
+    Alt+Ctrl+7 { move-column-to-workspace 7; }
+    Alt+Ctrl+8 { move-column-to-workspace 8; }
+    Alt+Ctrl+9 { move-column-to-workspace 9; }
+    Alt+Ctrl+0 { move-column-to-workspace 10; }
 
-    // sway `$mod+c workspace back_and_forth` (+ `workspace_auto_back_and_forth yes`).
-    // niri has focus-workspace-previous; the *auto* back-and-forth global setting
-    // has no niri equivalent (see TODO in report).
-    Alt+C { focus-workspace-previous; }
+    // Upstream default leaves workspace-back-and-forth commented out on Mod+Tab;
+    // bound here to replace sway's `workspace back_and_forth` (was on Alt+C).
+    Alt+Tab { focus-workspace-previous; }
 
-    // --- Layout / fullscreen (sway: layout stuff) ---
-    // sway `$mod+f fullscreen` = true fullscreen -> fullscreen-window.
-    Alt+F { fullscreen-window; }
+    // --- Column/window manipulation ---
+    Alt+BracketLeft  { consume-or-expel-window-left; }
+    Alt+BracketRight { consume-or-expel-window-right; }
+    Alt+Comma  { consume-window-into-column; }
+    Alt+Period { expel-window-from-column; }
+
+    Alt+R             { switch-preset-column-width; }
+    Alt+Shift+R       { switch-preset-column-width-back; }
+    Alt+Ctrl+Shift+R  { switch-preset-window-height; }
+    Alt+Ctrl+R        { reset-window-height; }
+
+    // sway `$mod+f` was true fullscreen; niri splits maximize/fullscreen/maximize-to-edges.
+    Alt+F       { maximize-column; }
+    Alt+Shift+F { fullscreen-window; }
+    Alt+M       { maximize-window-to-edges; }        // was focus-monitor-right; see above
+
+    Alt+Ctrl+F { expand-column-to-available-width; }
+    Alt+C      { center-column; }
+    Alt+Ctrl+C { center-visible-columns; }
+
+    // Finer resize.
+    Alt+Minus       { set-column-width "-10%"; }
+    Alt+Equal       { set-column-width "+10%"; }
+    Alt+Shift+Minus { set-window-height "-10%"; }
+    Alt+Shift+Equal { set-window-height "+10%"; }
+
+    // sway `$mod+Shift+space floating toggle` / `$mod+space focus mode_toggle`.
+    Alt+V       { toggle-window-floating; }
+    Alt+Shift+V { switch-focus-between-floating-and-tiling; }
+
     // sway `$mod+w layout tabbed` -> niri tabbed column display.
     Alt+W { toggle-column-tabbed-display; }
-    // sway `$mod+Shift+space floating toggle`
-    Alt+Shift+Space { toggle-window-floating; }
-    // sway `$mod+space focus mode_toggle` (swap tiling<->floating focus)
-    Alt+Space { switch-focus-between-floating-and-tiling; }
 
     // TODO(sway->niri, no equivalent):
     //   $mod+b splith / $mod+v splitv  -> niri has no h/v split (column model)
     //   $mod+s layout stacking         -> niri has tabbed columns but no "stacking"
     //   $mod+e layout toggle split     -> no split modes in niri
     //   $mod+a focus parent            -> niri has no parent containers (flat columns)
-
-    // --- Resize (sway had a dedicated `resize` mode on $mod+r) ---
-    // niri has no modes. Closest single-key: cycle preset column widths.
-    Alt+R       { switch-preset-column-width; }
-    Alt+Shift+R { switch-preset-column-width-back; }
-    // Finer resize, reusing sway's (now-unavailable) scratchpad keys $mod+minus /
-    // $mod+Shift+minus. niri has NO scratchpad, so those keys are free -- see TODO.
-    Alt+Minus       { set-column-width "-10%"; }
-    Alt+Equal       { set-column-width "+10%"; }
-    Alt+Shift+Minus { set-window-height "-10%"; }
-    Alt+Shift+Equal { set-window-height "+10%"; }
-
-    // TODO(sway->niri, no equivalent): scratchpad. sway used
-    //   $mod+Shift+minus move scratchpad / $mod+minus scratchpad show.
-    // niri has no scratchpad concept. (Keys reused for resize above.)
-
-    // --- Multi-monitor (sway: $mod+m / $mod+Shift+m to the right output) ---
-    Alt+M       { focus-monitor-right; }
-    Alt+Shift+M { move-workspace-to-monitor-right; }
-
-    // --- Passthrough (sway: `mode "passthrough"` toggled with $mod+u) ---
-    // niri's nearest is the keyboard-shortcuts inhibitor. NOTE: this only takes
-    // effect while a client that requested shortcut inhibition is focused; it's
-    // not a blanket global passthrough like sway's mode.
-    Alt+U allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+    // TODO(sway->niri, no equivalent): scratchpad. niri has no scratchpad concept.
 
     // --- Screenshots (sway: grim -g "$(slurp)" | wl-copy) ---
     // niri's built-in screenshot is interactive region select -> clipboard (+disk).
-    Alt+Q { screenshot; }
-    Print { screenshot; }
+    Print       { screenshot; }
+    Ctrl+Print  { screenshot-screen; }
+    Alt+Print   { screenshot-window; }
 
     // --- Media / brightness keys (sway: --locked ... pactl / brightnessctl) ---
     // `--locked` -> `allow-when-locked=true`. Kept pactl (his choice), not wpctl.
@@ -262,6 +312,18 @@ binds {
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
     XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
 
-    // Escape hatch to release the shortcut inhibitor (niri-recommended).
+    // Escape hatch to release the shortcut inhibitor (niri-recommended). This is
+    // now the only bind for it -- sway's passthrough mode (`$mod+u`) is dropped
+    // since U now switches workspaces, per upstream default.
     Alt+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+
+    // sway `$mod+Shift+e` ran a swaynag confirm-exit; niri's quit shows its own
+    // confirmation dialog.
+    Alt+Shift+E     { quit; }
+    Ctrl+Alt+Delete { quit; }
+
+    Alt+Shift+P { power-off-monitors; }
+
+    // TODO(sway->niri): `$mod+Shift+c reload`. niri hot-reloads config.kdl on save
+    // automatically, so there's no reload keybind to port.
 }

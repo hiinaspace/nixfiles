@@ -4,10 +4,10 @@
 		"output": "DP-5",
 		"position": "left",
 		"spacing": 4,
-		"modules-left": ["sway/workspaces", "sway/mode"],
-		"modules-center": ["sway/window"],
+		"modules-left": ["niri/workspaces", "niri/mode"],
+		"modules-center": ["niri/window"],
 		"modules-right": ["tray", "power-profiles-daemon", "pulseaudio", "battery", "custom/clock"],
-		"sway/window": {
+		"niri/window": {
 			"max-length": 50,
 			"rotate": 270
 		},
@@ -59,10 +59,10 @@
 		"output": "DP-6",
 		"position": "top",
 		"spacing": 4,
-		"modules-left": ["sway/workspaces", "sway/mode"],
-		"modules-center": ["sway/window"],
+		"modules-left": ["niri/workspaces", "niri/mode"],
+		"modules-center": ["niri/window"],
 		"modules-right": ["tray", "power-profiles-daemon", "pulseaudio", "battery", "custom/clock"],
-		"sway/window": {
+		"niri/window": {
 			"max-length": 50
 		},
 		"battery": {
