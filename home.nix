@@ -42,6 +42,29 @@
     pkgs.mpv
     pkgs.krita
     pkgs.blender
+    # VRChat world/avatar dev on Linux (multibox project). unityhub installs the
+    # Editor into ~/Unity, which persists: /home is the @home subvolume, not the
+    # ephemeral @ root — so keep the Editor install + licenses under $HOME.
+    # VRChat's Unity version is 2022.3.22f1 (unityhub://2022.3.22f1/887be4894c44).
+    # alcom = FOSS VRChat Creator Companion (VCC) replacement for VPM packages.
+    # NVIDIA: launch the Editor with `-force-gfx-direct -force-vulkan`.
+    # See https://wiki.vronlinux.org/docs/vrchat/unity/
+    pkgs.unityhub
+    pkgs.alcom
+    # niri runs X11 apps through rootless xwayland-satellite, which won't let a
+    # client position its own top-level windows — so Unity's tear-off/re-dock and
+    # dock-dragging silently fail. Fix per niri docs: run Unity inside a nested
+    # *stacking* compositor. `unity-nested [unityhub|ALCOM]` (default unityhub)
+    # opens a labwc window and launches the editor front-end inside it, so the
+    # Editor it spawns inherits labwc's display and can dock normally.
+    # https://github.com/niri-wm/niri/wiki/Xwayland
+    pkgs.labwc
+    (pkgs.writeShellScriptBin "unity-nested" ''
+      # Fully quit any Unity Hub / ALCOM already on niri first — they're
+      # single-instance, so a stray copy would swallow the launch and the Editor
+      # would open on niri (undockable) instead of inside labwc.
+      exec ${pkgs.labwc}/bin/labwc -s "''${*:-unityhub}"
+    '')
     pkgs.gh
     pkgs.obs-studio
     pkgs.ffmpeg-full
