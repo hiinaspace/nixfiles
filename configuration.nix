@@ -434,7 +434,7 @@ in
         # CAVEAT: the menu's plain "sway" entry (from programs.sway) lacks
         # `--unsupported-gpu`; for sway just press Enter to use this default cmd,
         # and select "niri" from the menu when you want niri.
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --cmd 'sway --unsupported-gpu'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --cmd 'niri'";
         user = "greeter";
       };
     };

@@ -150,7 +150,7 @@ binds {
 
     // --- Basics --- (spawn commands are ours; upstream default spawns alacritty/fuzzel)
     Alt+T            hotkey-overlay-title="Terminal: kitty" { spawn "kitty" "--single-instance"; }
-    Alt+D            hotkey-overlay-title="Launcher: wmenu-run" { spawn "wmenu-run"; }
+    Alt+D            hotkey-overlay-title="Launcher: fuzzel" { spawn "fuzzel"; }
     Alt+Shift+Return hotkey-overlay-title="Firefox" { spawn "firefox"; }
 
     Alt+O repeat=false { toggle-overview; }
