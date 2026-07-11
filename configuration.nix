@@ -218,6 +218,10 @@ in
     XRT_COMPOSITOR_PIPEWIRE_MIRROR = "0";
     XRT_COMPOSITOR_FORCE_WAYLAND_DIRECT = "1";
     XRT_COMPOSITOR_WAYLAND_CONNECTOR = "DP-4";
+    # Monado is socket-activated by the user manager, which does not retain
+    # Niri's display name across suspend. Pin the session's compositor socket
+    # so a post-resume compositor initialization can always acquire its lease.
+    WAYLAND_DISPLAY = "wayland-1";
     U_PACING_COMP_MIN_TIME_MS = "5";
     XRT_COMPOSITOR_USE_PRESENT_WAIT = "1";
     U_PACING_COMP_TIME_FRACTION_PERCENT = "90";
