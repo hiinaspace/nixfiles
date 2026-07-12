@@ -104,6 +104,7 @@ in
 
   networking.hostName = "sayu";
   networking.networkmanager.enable = true;
+  networking.interfaces.enp7s0.wakeOnLan.enable = true;
 
   fileSystems = {
     "/mnt/pool" = chirashiSshfsMount "/mnt/pool";
@@ -424,6 +425,9 @@ in
     age
     python3
     bubblewrap
+    glib # for gsettings
+    gsettings-desktop-schemas # for prefer-dark/prefer-light
+    dconf-editor # also for prefer-dark/light
   ];
 
   # some sort of graphical greeter login prommpt
