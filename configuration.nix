@@ -37,6 +37,95 @@ let
   };
 
   llama-cpp-cuda = pkgs.llama-cpp.override { cudaSupport = true; };
+
+  # Synchronize the Niri Wayland clipboard and Xwayland's clipboard for Proton
+  # applications. This deliberately uses one event-driven Wayland watcher and
+  # a small X11 poller rather than scanning every wayland-N/:N display as
+  # clipboard-sync does. The latter leaks Wayland file descriptors here and
+  # also blocks on WayVR's independent compositor socket.
+  clipboard-bridge-wayland-consumer = pkgs.writeShellApplication {
+    name = "clipboard-bridge-wayland-consumer";
+    runtimeInputs = [ pkgs.coreutils pkgs.util-linux pkgs.wl-clipboard pkgs.xclip ];
+    text = ''
+      set -euo pipefail
+
+      runtime_dir="''${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}"
+      state_dir="$runtime_dir/clipboard-bridge"
+      mkdir -p "$state_dir"
+      x11_display="''${DISPLAY:-:0}"
+
+
+      content="$(mktemp "$state_dir/wayland.XXXXXX")"
+      trap 'rm -f "$content"' EXIT
+      cat > "$content"
+      hash="$(sha256sum "$content" | cut -d ' ' -f 1)"
+
+      if (
+        flock -x 9
+        test -f "$state_dir/wayland.hash" && test "$(cat "$state_dir/wayland.hash")" = "$hash" && exit 1
+        printf '%s' "$hash" > "$state_dir/wayland.hash"
+      ) 9> "$state_dir/lock"; then
+        # xclip forks to retain X11 selection ownership. Keep it outside the
+        # flock scope so the fork cannot inherit and retain the lock FD.
+        if timeout 2 env DISPLAY="$x11_display" xclip -selection clipboard -in < "$content"; then
+          (
+            flock -x 9
+            printf '%s' "$hash" > "$state_dir/x11.hash"
+          ) 9> "$state_dir/lock"
+        fi
+      fi
+    '';
+  };
+
+  clipboard-bridge = pkgs.writeShellApplication {
+    name = "clipboard-bridge";
+    runtimeInputs = [ pkgs.coreutils pkgs.util-linux pkgs.wl-clipboard pkgs.xclip ];
+    text = ''
+      set -euo pipefail
+
+      runtime_dir="''${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}"
+      state_dir="$runtime_dir/clipboard-bridge"
+      mkdir -p "$state_dir"
+
+      wayland_display="''${WAYLAND_DISPLAY:-wayland-1}"
+      x11_display="''${DISPLAY:-:0}"
+
+      poll_x11() {
+        while true; do
+          content="$(mktemp "$state_dir/x11.XXXXXX")"
+          if timeout 2 env DISPLAY="$x11_display" xclip -selection clipboard -out > "$content" 2>/dev/null; then
+            hash="$(sha256sum "$content" | cut -d ' ' -f 1)"
+            if (
+              flock -x 9
+              test -f "$state_dir/x11.hash" && test "$(cat "$state_dir/x11.hash")" = "$hash" && exit 1
+              printf '%s' "$hash" > "$state_dir/x11.hash"
+            ) 9> "$state_dir/lock"; then
+              # wl-copy also backgrounds by default, so do not run it while
+              # holding the lock for the same reason as xclip above.
+              if timeout 2 env WAYLAND_DISPLAY="$wayland_display" wl-copy --type text/plain < "$content"; then
+                (
+                  flock -x 9
+                  printf '%s' "$hash" > "$state_dir/wayland.hash"
+                ) 9> "$state_dir/lock"
+              fi
+            fi
+          fi
+          rm -f "$content"
+          sleep 0.25
+        done
+      }
+
+      rm -f "$state_dir"/*.hash
+      poll_x11 &
+      x11_poller=$!
+      trap 'kill "$x11_poller" 2>/dev/null || true' EXIT INT TERM
+      # wl-paste --watch accepts the callback executable path, but no separate
+      # arguments, hence the small dedicated consumer above.
+      env WAYLAND_DISPLAY="$wayland_display" \
+        wl-paste --no-newline --type text/plain --watch \
+          ${clipboard-bridge-wayland-consumer}/bin/clipboard-bridge-wayland-consumer
+    '';
+  };
 in
 {
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -184,7 +273,17 @@ in
     ];
   };
 
-  services.clipboard-sync.enable = true;
+  systemd.user.services.clipboard-bridge = {
+    description = "Synchronize Niri and Xwayland text clipboards";
+    partOf = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    wantedBy = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${clipboard-bridge}/bin/clipboard-bridge run";
+      Restart = "always";
+      RestartSec = 1;
+    };
+  };
   
   # https://github.com/TayouVR/nixfiles/blob/49e1f3b4f7351c1601b0cf7a4479008dac95bb78/configs/common/optional/vr/vr.nix#L34
   # Bigscreen Beyond udev rules (all interfaces: HMD, Bigeye, audio strap, firmware mode)
@@ -443,7 +542,11 @@ in
         # CAVEAT: the menu's plain "sway" entry (from programs.sway) lacks
         # `--unsupported-gpu`; for sway just press Enter to use this default cmd,
         # and select "niri" from the menu when you want niri.
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --cmd 'niri'";
+        # Do not launch the compositor directly: niri-session imports the login
+        # environment into both systemd --user and D-Bus, then starts the
+        # niri.service lifecycle. Bare `niri` leaves D-Bus-activated portals
+        # and user services without WAYLAND_DISPLAY / XDG_CURRENT_DESKTOP.
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --cmd 'niri-session'";
         user = "greeter";
       };
     };
@@ -520,6 +623,17 @@ in
   # programs.niri (with useNautilus=false) already sets this key to "gtk", so
   # mkForce is needed to override that into pikeru.
   xdg.portal.config.niri."org.freedesktop.impl.portal.FileChooser" = lib.mkForce [ "pikeru" ];
+
+  # The GTK portal is D-Bus activated by the user systemd manager. That
+  # manager can lose the compositor environment (notably after resume), at
+  # which point the backend exits with "cannot open display" and cannot expose
+  # the desktop color scheme through the Settings portal. Niri's socket is
+  # deliberately stable on this host; make it available directly to the
+  # backend instead of relying on an activation-environment import.
+  systemd.user.services.xdg-desktop-portal-gtk.environment = {
+    GDK_BACKEND = "wayland";
+    WAYLAND_DISPLAY = "wayland-1";
+  };
 
   # https://nixos.wiki/wiki/Fish
   programs.fish.enable = true;

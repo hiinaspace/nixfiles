@@ -10,7 +10,6 @@
     # https://github.com/nix-community/nixpkgs-xr
     nixpkgs-xr.url = "github:nix-community/nixpkgs-xr";
     comfyui-nix.url = "github:utensils/comfyui-nix";
-    clipboard-sync.url = "github:dnut/clipboard-sync";
 
     # Source-only input: pinned in flake.lock, packaged locally in ./pikeru.nix.
     # Bump with `nix flake update pikeru-src`.
@@ -33,7 +32,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, clipboard-sync, pikeru-src, home-manager, sops-nix, impermanence }:
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, home-manager, sops-nix, impermanence }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -59,7 +58,6 @@
           })
           nixpkgs-xr.nixosModules.nixpkgs-xr
           comfyui-nix.nixosModules.default
-          clipboard-sync.nixosModules.default
           ./configuration.nix
           sops-nix.nixosModules.sops
           # Impermanence: ephemeral root, rolled back to @blank each boot. Active
