@@ -264,6 +264,20 @@ in
     };
   };
 
+  # Direct-mode Vulkan and lighthouse USB state do not reliably survive
+  # suspend. Leave the VR stack stopped after resume; the next WayVR launch
+  # socket-activates a fresh Monado instance.
+  systemd.services.vr-stop-before-sleep = {
+    description = "Stop the user VR stack before sleep";
+    before = [ "sleep.target" ];
+    wantedBy = [ "sleep.target" ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      ${pkgs.systemd}/bin/systemctl --user --machine=s@.host \
+        stop wayvr-debug.service monado.service || true
+    '';
+  };
+
   programs.steam = {
     enable = true;
     extraCompatPackages = with pkgs; [
@@ -308,6 +322,17 @@ in
     enable = true;
     defaultRuntime = true; # Publish Monado as the active OpenXR runtime for native clients like WayVR
     highPriority = true;   # CAP_SYS_NICE for compositor thread priority
+  };
+  systemd.user.services.monado.serviceConfig = {
+    # Reset the BSB's Tundra tracking module before Monado opens it. Ignore a
+    # missing/disconnected headset instead of making Monado fail to start.
+    ExecStartPre = [
+      "-${pkgs.usbutils}/bin/usbreset 28de:2300"
+      "${pkgs.systemd}/bin/udevadm settle"
+    ];
+    # A wedged Vulkan/OpenXR teardown can otherwise consume most of the user
+    # manager's two-minute shutdown timeout.
+    TimeoutStopSec = "10s";
   };
   systemd.user.services.monado.environment = {
     XRT_NO_STDIN = "1";
