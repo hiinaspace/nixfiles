@@ -312,6 +312,23 @@
     enable = true;
   };
 
+  # turn darkmode on/off by time of day
+  services.darkman = {
+    enable = true;
+    lightModeScripts.gtk-theme = ''
+      ${pkgs.dconf}/bin/dconf write \
+          /org/gnome/desktop/interface/color-scheme "'prefer-light'"
+    '';
+    darkModeScripts.gtk-theme = ''
+      ${pkgs.dconf}/bin/dconf write \
+          /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
+    '';
+    settings = {
+      lat = 40.16;
+      lng = -105.1;
+    };
+  };
+
   programs.git = {
     enable = true;
     settings = {

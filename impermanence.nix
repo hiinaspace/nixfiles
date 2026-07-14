@@ -88,6 +88,9 @@
       # borgmatic bookkeeping
       "/var/lib/borgmatic"
 
+      # flatpak https://wiki.nixos.org/wiki/Flatpak
+      "/var/lib/flatpak"
+
       # Optional service state — regenerable, persist to avoid re-downloads/rebuilds:
       # "/var/lib/ollama"
       # "/var/lib/comfyui"

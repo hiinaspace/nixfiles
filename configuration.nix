@@ -683,6 +683,8 @@ in
   # the per-boot impermanence wipe of /etc; the repo itself lives on @home.
   environment.etc."nixos".source = "/home/s/nixos-config";
 
+  # for bitwig
+  services.flatpak.enable = true;
 
   hardware.bluetooth = {
     enable = true;
