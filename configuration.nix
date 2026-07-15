@@ -335,6 +335,10 @@ in
     TimeoutStopSec = "10s";
   };
   systemd.user.services.monado.environment = {
+    # Ask SteamVR's lighthouse driver to put the HMD/controllers into standby
+    # during a clean Monado shutdown. This is intentionally paired with the
+    # stop-vr ordering so controller power-off happens before base stations.
+    LH_STANDBY_ON_EXIT = "1";
     XRT_NO_STDIN = "1";
     XRT_COMPOSITOR_DESIRED_MODE = "1";
     XRT_COMPOSITOR_COMPUTE = "1";

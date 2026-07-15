@@ -1,6 +1,162 @@
 { config, pkgs, ... }:
 
-{
+let
+  # The retry support landed immediately after the latest 1.4.0 release, so
+  # pin upstream master until nixpkgs updates lighthouse-steamvr.
+  lighthouse-steamvr = pkgs.lighthouse-steamvr.overrideAttrs (old: {
+    version = "1.4.0-unstable-2026-07-14";
+    src = pkgs.fetchFromGitHub {
+      owner = "ShayBox";
+      repo = "Lighthouse";
+      rev = "d069399af2d493b0c540095a495c68e74e75adfe";
+      hash = "sha256-u6xO0l+p7NBGSdB6JTlWDdFapl17TxZ9UdQ2r2O7dIQ=";
+    };
+    # The retry patch does not change Cargo.lock.
+    cargoHash = old.cargoHash;
+  });
+
+  vr-lighthouses = pkgs.writeShellApplication {
+    name = "vr-lighthouses";
+    runtimeInputs = [ lighthouse-steamvr ];
+    text = ''
+      if [ "$#" -ne 1 ] || [[ "$1" != "on" && "$1" != "off" ]]; then
+        echo "usage: vr-lighthouses on|off" >&2
+        exit 2
+      fi
+
+      exec lighthouse -vv \
+        --state "$1" \
+        --bsid "hci0/dev_DC_01_7A_6B_04_AD" \
+        --bsid "hci0/dev_F6_4A_4B_5B_EE_CB" \
+        --retries 5 \
+        --retry-delay 2
+    '';
+  };
+
+  start-vr = pkgs.writeShellApplication {
+    name = "start-vr";
+    runtimeInputs = with pkgs; [ coreutils gnugrep libnotify systemd ];
+    text = ''
+      controller_count() {
+        local invocation
+        invocation=$(systemctl --user show monado.service --property=InvocationID --value)
+        if [ -z "$invocation" ]; then
+          echo 0
+          return
+        fi
+        journalctl --user "_SYSTEMD_INVOCATION_ID=$invocation" --output=cat \
+          | grep -c 'Found lighthouse controller' || true
+      }
+
+      wait_for_controllers() {
+        local count=0
+        for _ in $(seq 1 15); do
+          count=$(controller_count)
+          if [ "$count" -ge 2 ]; then
+            echo "Monado detected both Index controllers."
+            return 0
+          fi
+          sleep 1
+        done
+        return 1
+      }
+
+      prompt_for_controllers() {
+        notify-send --app-name=start-vr \
+          "VR startup" "Turn on both Index controllers, then continue in the terminal." || true
+        if [ -t 0 ]; then
+          read -r -p "Turn on both Index controllers, then press Enter to start Monado... "
+        else
+          echo "Turn on both Index controllers; starting Monado in 10 seconds..."
+          sleep 10
+        fi
+      }
+
+      if [ "$#" -ne 0 ]; then
+        echo "usage: start-vr" >&2
+        exit 2
+      fi
+
+      cleanup_incomplete_start() {
+        status=$?
+        if [ "$status" -ne 0 ] && ! systemctl --user is-active --quiet vr-session.target; then
+          systemctl --user stop vr-lighthouses.service || true
+        fi
+        exit "$status"
+      }
+      trap cleanup_incomplete_start EXIT
+
+      systemctl --user start vr-lighthouses.service
+
+      if ! systemctl --user is-active --quiet vr-session.target; then
+        # Clear a socket-activated instance before the user powers on the
+        # controllers. With standby-on-exit enabled, this may turn off any
+        # controller the old instance already knew about.
+        systemctl --user stop wayvr-debug.service || true
+        systemctl --user stop monado.service monado.socket || true
+        prompt_for_controllers
+        systemctl --user start vr-session.target
+      fi
+
+      if wait_for_controllers; then
+        exit 0
+      fi
+
+      count=$(controller_count)
+      echo "Monado detected only $count of 2 Index controllers; restarting the VR clients."
+      systemctl --user stop wayvr-debug.service || true
+      systemctl --user stop monado.service || true
+      prompt_for_controllers
+      systemctl --user start monado.socket monado.service wayvr-debug.service
+
+      if ! wait_for_controllers; then
+        echo "Monado still did not detect both controllers; check its journal." >&2
+        systemctl --user stop vr-session.target || true
+        exit 1
+      fi
+    '';
+  };
+
+  stop-vr = pkgs.writeShellApplication {
+    name = "stop-vr";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      if [ "$#" -ne 0 ]; then
+        echo "usage: stop-vr" >&2
+        exit 2
+      fi
+
+      # Stop clients before the runtime. Monado's SteamVR lighthouse driver
+      # then puts the known controllers into standby, and finally the BLE
+      # helper powers down both base stations.
+      systemctl --user stop wayvr-debug.service || true
+      systemctl --user stop monado.service monado.socket || true
+      systemctl --user stop vr-lighthouses.service || true
+      systemctl --user stop vr-session.target || true
+    '';
+  };
+
+  stop-wayvr = pkgs.writeShellApplication {
+    name = "stop-wayvr";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      if [ -z "''${MAINPID:-}" ] || ! kill -0 "$MAINPID" 2>/dev/null; then
+        exit 0
+      fi
+
+      kill -TERM "$MAINPID"
+      for _ in $(seq 1 50); do
+        if ! kill -0 "$MAINPID" 2>/dev/null; then
+          exit 0
+        fi
+        sleep 0.1
+      done
+
+      echo "WayVR did not finish teardown after 5 seconds; using SIGKILL" >&2
+      kill -KILL "$MAINPID" 2>/dev/null || true
+    '';
+  };
+in {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "s";
@@ -18,6 +174,10 @@
   # The home.packages option allows you to install Nix packages into your
   # environment. (allowUnfree comes from the system pkgs via useGlobalPkgs.)
   home.packages = [
+    lighthouse-steamvr
+    vr-lighthouses
+    start-vr
+    stop-vr
     # # Adds the 'hello' command to your environment. It prints a friendly
     # # "Hello, world!" when run.
     # pkgs.hello
@@ -105,6 +265,61 @@
       fi
     '')
   ];
+
+  systemd.user.targets.vr-session = {
+    Unit = {
+      Description = "Local VR session";
+      Wants = [
+        "vr-lighthouses.service"
+        "monado.socket"
+        "monado.service"
+        "wayvr-debug.service"
+      ];
+      After = [
+        "vr-lighthouses.service"
+        "monado.socket"
+        "monado.service"
+        "wayvr-debug.service"
+      ];
+    };
+  };
+
+  systemd.user.services.vr-lighthouses = {
+    Unit = {
+      Description = "Power the VR base stations";
+      Before = [ "monado.service" ];
+      PartOf = [ "vr-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${vr-lighthouses}/bin/vr-lighthouses on";
+      ExecStop = "${vr-lighthouses}/bin/vr-lighthouses off";
+      TimeoutStartSec = 90;
+      TimeoutStopSec = 90;
+    };
+  };
+
+  # The Monado units come from the NixOS module, while WayVR's debug unit is
+  # linked from its checkout. Drop-ins let the session target stop all three
+  # without replacing either source unit.
+  xdg.configFile."systemd/user/monado.service.d/vr-session.conf".text = ''
+    [Unit]
+    PartOf=vr-session.target
+  '';
+  xdg.configFile."systemd/user/monado.socket.d/vr-session.conf".text = ''
+    [Unit]
+    PartOf=vr-session.target
+  '';
+  xdg.configFile."systemd/user/wayvr-debug.service.d/vr-session.conf".text = ''
+    [Unit]
+    PartOf=vr-session.target
+
+    [Service]
+    ExecStop=${stop-wayvr}/bin/stop-wayvr
+    SuccessExitStatus=SIGKILL
+    TimeoutStopSec=10s
+  '';
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.
