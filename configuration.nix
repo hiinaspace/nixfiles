@@ -523,6 +523,12 @@ in
   # Expose Monado's user IPC socket inside pressure-vessel for xrizer clients.
   environment.sessionVariables.PRESSURE_VESSEL_FILESYSTEMS_RW = "/run/user/1000/monado_comp_ipc";
 
+  # Lets prebuilt/non-Nix binaries (e.g. `uv run --with numpy`'s manylinux
+  # wheels) find standard FHS-layout shared libs like libstdc++.so.6 that
+  # NixOS doesn't expose by default.
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = [ pkgs.stdenv.cc.cc.lib ];
+
   nixpkgs.config.allowUnfree = true;
   # List packages installed in system profile.
   # You can use https://search.nixos.org/ to find more packages (and options).

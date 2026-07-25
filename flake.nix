@@ -18,6 +18,14 @@
       flake = false;
     };
 
+    # Source-only input: pinned in flake.lock, packaged locally in ./animutools.nix.
+    # Local edits to the checkout in ~/code/animutools are NOT picked up here —
+    # push to github, then `nix flake update animutools-src` + rebuild.
+    animutools-src = {
+      url = "github:hiinaspace/animutools";
+      flake = false;
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -32,7 +40,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, home-manager, sops-nix, impermanence }:
+  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -45,13 +53,17 @@
       pikeruOverlay = final: prev: {
         pikeru = final.callPackage ./pikeru.nix { src = pikeru-src; };
       };
+      # Overlay exposing animutools (fenc) as pkgs.animutools.
+      animutoolsOverlay = final: prev: {
+        animutools = final.python3Packages.callPackage ./animutools.nix { src = animutools-src; };
+      };
     in {
     nixosConfigurations = {
       sayu = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
           {
-	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay ];
+	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay animutoolsOverlay ];
           }
           ({ ... }: {
             services.monado.package = patchedMonado;

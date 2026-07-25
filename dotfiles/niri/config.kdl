@@ -158,6 +158,7 @@ binds {
 
     Alt+O repeat=false { toggle-overview; }
     Alt+Q repeat=false { close-window; }
+    Alt+BackSpace repeat=false { close-window; }
 
     // --- Focus (left/right = columns, up/down = windows within a column) ---
     Alt+Left  { focus-column-left; }

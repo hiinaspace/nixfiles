@@ -230,6 +230,12 @@ in {
     pkgs.gh
     pkgs.obs-studio
     pkgs.ffmpeg-full
+    pkgs.uv
+    # fenc: anime encoding helper, packaged from github:hiinaspace/animutools
+    # (see flake.nix animutoolsOverlay / animutools.nix). Local edits to
+    # ~/code/animutools need a push + `nix flake update animutools-src` +
+    # rebuild before this picks them up.
+    pkgs.animutools
     pkgs.opencode
     pkgs.mumble
     pkgs.swappy
