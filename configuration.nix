@@ -464,6 +464,9 @@ in
       "/mnt/s/comfyuimodels"
     ];
   };
+  systemd.tmpfiles.rules = [
+    "L+ /var/lib/comfyui/models - - - - /mnt/s/comfyuimodels"
+  ];
 
   # llama.cpp router mode: serves Qwen3.6-35B-A3B (MoE, 3B active params, Q4_K_XL,
   # 12 expert layers offloaded to CPU RAM - ~105-110 tok/s gen, ~1700 tok/s pp,
