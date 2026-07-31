@@ -6,6 +6,23 @@
 { config, lib, pkgs, ... }:
 
 let
+  sudoplzPackage = pkgs.python3Packages.buildPythonApplication rec {
+    pname = "sudoplz";
+    version = "0.3.0";
+    pyproject = true;
+
+    src = pkgs.fetchFromGitHub {
+      owner = "crypdick";
+      repo = "sudoplz";
+      rev = "b54495c2eda89337249b2415ec65d4303fb90a26";
+      hash = "sha256-/4/nRNfHgQwm1X+Tg3MxIMEGztRmQ5cEo7TBwzbdnG0=";
+    };
+
+    build-system = with pkgs.python3Packages; [ hatchling ];
+    dependencies = with pkgs.python3Packages; [ keyring ];
+    doCheck = false;
+  };
+
   chirashiSsh = pkgs.writeShellScript "chirashi-sshfs-ssh" ''
     exec ${pkgs.openssh}/bin/ssh -F /home/s/.ssh/config "$@"
   '';
@@ -143,6 +160,9 @@ in
   boot = {
     kernel.sysctl = {
       "fs.inotify.max_user_watches" = 1048576;
+      # Keep Magic SysRq available when userspace is too memory-starved to
+      # recover normally. This enables REISUB and the emergency OOM trigger (F).
+      "kernel.sysrq" = 1;
     };
 
     loader = {
@@ -395,14 +415,55 @@ in
     enableManager = true;  # Enable the built-in ComfyUI Manager
     listenAddress = "0.0.0.0";
     openFirewall = true;
-    environment.LD_LIBRARY_PATH = lib.makeLibraryPath [
-      config.services.comfyui.package.pythonRuntime.pkgs.torch.cudaPackages.cuda_nvrtc.lib
+    extraArgs = [
+      "--reserve-vram" "2"
+      # ComfyUI otherwise sizes pinned/offload memory against total host RAM,
+      # without accounting for this service's cgroup limit.
+      "--disable-pinned-memory"
+      "--disable-async-offload"
+      "--cache-none"
     ];
+    customNodes = {
+      ComfyUI-ControlNet-Aux = pkgs.fetchFromGitHub {
+        owner = "Fannovel16";
+        repo = "comfyui_controlnet_aux";
+        rev = "e8b689a513c3e6b63edc44066560ca5919c0576e";
+        hash = "sha256-tMmERf4y7sfuEGao7JHC7FLjBgPuViCtHxr8f9NnHzo=";
+      };
+      ComfyUI-segment-anything-2 = pkgs.fetchFromGitHub {
+        owner = "kijai";
+        repo = "ComfyUI-segment-anything-2";
+        rev = "0c35fff5f382803e2310103357b5e985f5437f32";
+        hash = "sha256-5e64dKo1VZmwDh1geAVrryb15S5mRXOuOrEJ8ZUfQxM=";
+      };
+      ComfyUI-workflow-to-api = pkgs.fetchFromGitHub {
+        owner = "SethRobinson";
+        repo = "comfyui-workflow-to-api-converter-endpoint";
+        rev = "bc8538278f82053b3ca10a44d62d02596f8e1a37";
+        hash = "sha256-lew7iu788v0FbPyOq6j6KuYJqvRXaiOqYazXyFwU84A=";
+      };
+    };
+    environment = {
+      AUX_ANNOTATOR_CKPTS_PATH = "/mnt/s/comfyuimodels/controlnet_aux";
+      LD_LIBRARY_PATH = lib.makeLibraryPath [
+        config.services.comfyui.package.pythonRuntime.pkgs.torch.cudaPackages.cuda_nvrtc.lib
+      ];
+    };
   };
 
-  systemd.services.comfyui.serviceConfig.ReadWritePaths = lib.mkAfter [
-    "/mnt/s/comfyuimodels"
-  ];
+  systemd.services.comfyui.serviceConfig = {
+    MemoryAccounting = true;
+    MemoryHigh = "10G";
+    MemoryMax = "12G";
+    MemorySwapMax = 0;
+    OOMScoreAdjust = 1000;
+    OOMPolicy = "stop";
+    ManagedOOMMemoryPressure = "kill";
+    ManagedOOMMemoryPressureLimit = "40%";
+    ReadWritePaths = lib.mkAfter [
+      "/mnt/s/comfyuimodels"
+    ];
+  };
 
   # llama.cpp router mode: serves Qwen3.6-35B-A3B (MoE, 3B active params, Q4_K_XL,
   # 12 expert layers offloaded to CPU RAM - ~105-110 tok/s gen, ~1700 tok/s pp,
@@ -522,6 +583,7 @@ in
   environment.sessionVariables.PRESSURE_VESSEL_FILESYSTEMS_RO = "/nix:/run/current-system";
   # Expose Monado's user IPC socket inside pressure-vessel for xrizer clients.
   environment.sessionVariables.PRESSURE_VESSEL_FILESYSTEMS_RW = "/run/user/1000/monado_comp_ipc";
+  environment.sessionVariables.SUDO_ASKPASS = "${sudoplzPackage}/bin/askpass";
 
   # Lets prebuilt/non-Nix binaries (e.g. `uv run --with numpy`'s manylinux
   # wheels) find standard FHS-layout shared libs like libstdc++.so.6 that
@@ -557,6 +619,8 @@ in
     comfy-ui-cuda
     lovr-playspace
     age
+    sudoplzPackage
+    zenity
     python3
     bubblewrap
     glib # for gsettings
