@@ -442,6 +442,13 @@ in
         rev = "bc8538278f82053b3ca10a44d62d02596f8e1a37";
         hash = "sha256-lew7iu788v0FbPyOq6j6KuYJqvRXaiOqYazXyFwU84A=";
       };
+      # GGUF-quantized model loading. Needed because the fp8 Wan2.2-Animate-14B
+      # weights are 17.1 GiB and cannot load through this service's 12 GiB
+      # MemoryMax with MemorySwapMax=0; a Q4_K_M quant is 10.7 GiB and fits.
+      # Taken from comfyui-nix's own packaged set (already pinned upstream) rather
+      # than a local fetchFromGitHub, and its Python deps (gguf, sentencepiece,
+      # protobuf) are already unconditional in the module's pythonRuntime.
+      ComfyUI-GGUF = pkgs.comfyui-custom-nodes.gguf;
     };
     environment = {
       AUX_ANNOTATOR_CKPTS_PATH = "/mnt/s/comfyuimodels/controlnet_aux";
@@ -451,10 +458,21 @@ in
     };
   };
 
+  # Raised 2026-08-03 from 10G/12G for MiniMax H3. H3 needs two models that each
+  # individually exceeded the old cap: the Ref2VA DiT at 13.26 GiB (Q3_K_M) and
+  # a Qwen3VL-32B text encoder at 13.58 GiB (Q4_K_M). They load sequentially and
+  # --cache-none frees between stages, so the peak is one model plus working
+  # buffers, ~16 GiB. MemoryHigh sits under that to apply reclaim pressure
+  # first; MemoryMax is the hard stop.
+  #
+  # This only fits with llama-server and the Unity editor stopped. MemorySwapMax
+  # stays 0 so ComfyUI can never push into the 15.2 GiB zram and start a
+  # swap-thrash spiral, and OOMScoreAdjust stays 1000 so that if anything must
+  # die under pressure it is this service and not the interactive session.
   systemd.services.comfyui.serviceConfig = {
     MemoryAccounting = true;
-    MemoryHigh = "10G";
-    MemoryMax = "12G";
+    MemoryHigh = "15G";
+    MemoryMax = "18G";
     MemorySwapMax = 0;
     OOMScoreAdjust = 1000;
     OOMPolicy = "stop";
@@ -468,6 +486,29 @@ in
     "L+ /var/lib/comfyui/models - - - - /mnt/s/comfyuimodels"
   ];
 
+  # Added 2026-08-03 alongside the ComfyUI limit raise. With 30.5 GiB of RAM and
+  # models that peak near 16 GiB, the failure mode to avoid is not a clean OOM
+  # kill but a swap-thrash livelock where the desktop and the agent session stop
+  # responding long before the kernel acts. The 15.2 GiB of swap here is zram --
+  # RAM-backed compression, so filling it is more memory pressure, not relief,
+  # which makes the kernel's own "plenty of swap left" heuristic misleading.
+  #
+  # ignoreOOMScoreAdjust is left at its default false, so earlyoom honours the
+  # OOMScoreAdjust=1000 set on comfyui above and reaches for it first.
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 8;
+    freeMemKillThreshold = 4;
+    freeSwapThreshold = 20;
+    freeSwapKillThreshold = 10;
+    extraArgs = [
+      # Never the session, the compositor, or the agent driving it.
+      "--avoid" "^(\\.claude-unwrapp|niri|sshd|systemd|dbus-daemon|kitty)$"
+      # The things that are cheap to restart and are usually the actual cause.
+      "--prefer" "^(python3\\.12|llama-server|Unity|\\.firefox-wrappe)$"
+    ];
+  };
+
   # llama.cpp router mode: serves Qwen3.6-35B-A3B (MoE, 3B active params, Q4_K_XL,
   # 12 expert layers offloaded to CPU RAM - ~105-110 tok/s gen, ~1700 tok/s pp,
   # 98k context in ~20.4GB VRAM) and Gemma4 E4B (small model for quick one-off
@@ -479,7 +520,10 @@ in
   # API (for Claude Code, at /v1/messages) - no proxy needed for either.
   systemd.services.llama-server = {
     description = "llama.cpp server (router: Qwen3.6-35B-A3B / Gemma4 E4B)";
-    wantedBy = [ "multi-user.target" ];
+    # Deliberately not in multi-user.target as of 2026-08-03: it holds ~7.3 GiB
+    # of VRAM resident, which is the difference between MiniMax H3 loading and
+    # OOMing on a 24 GiB card, and it was auto-restarting on every rebuild.
+    # Start it on demand with `systemctl start llama-server`.
     after = [ "network.target" ];
     serviceConfig = {
       ExecStart = ''
