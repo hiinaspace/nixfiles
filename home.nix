@@ -204,6 +204,7 @@ in {
     pkgs.mpv
     pkgs.krita
     pkgs.blender
+    pkgs.zed-editor
     # VRChat world/avatar dev on Linux (multibox project). unityhub installs the
     # Editor into ~/Unity, which persists: /home is the @home subvolume, not the
     # ephemeral @ root — so keep the Editor install + licenses under $HOME.
