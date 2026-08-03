@@ -156,7 +156,10 @@ let
       kill -KILL "$MAINPID" 2>/dev/null || true
     '';
   };
+
 in {
+  imports = [ ./synthv.nix ];
+
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "s";

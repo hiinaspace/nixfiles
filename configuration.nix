@@ -542,6 +542,18 @@ in
   # Enable sound.
   security.rtkit.enable = true;
 
+  # Wine audio plugins bridged by yabridge use shared-memory audio buffers.
+  # Let members of the audio group lock those buffers instead of falling back
+  # to the host's small default memlock limit.
+  security.pam.loginLimits = [
+    {
+      domain = "@audio";
+      type = "-";
+      item = "memlock";
+      value = "unlimited";
+    }
+  ];
+
   services.pipewire = {
     enable = true;
     pulse.enable = true;
@@ -716,7 +728,7 @@ in
   users.users.s = {
     isNormalUser = true;
     # sudo, video and input for maybe VR compat
-    extraGroups = [ "wheel" "video" "input" ];
+    extraGroups = [ "wheel" "video" "input" "audio" ];
     packages = with pkgs; [
       tree
     ];
