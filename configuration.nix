@@ -154,6 +154,7 @@ in
       ./hardware-configuration.nix
       ./cachix.nix
       ./backup.nix
+      ./offsite-borg.nix
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -718,6 +719,17 @@ in
   sops.age.keyFile = "/home/s/.config/sops/age/keys.txt";
   sops.secrets.spassword.neededForUsers = true;
 
+  # Curated offsite home backup. This is intentionally independent of the LAN
+  # borgmatic job in backup.nix, so an Internet/provider failure cannot suppress
+  # the local copy to chirashi.
+  services.borgOffsite = {
+    enable = true;
+    repository = "fm3170@fm3170.rsync.net:borg/sayu";
+    startAt = "02:30";
+  };
+  programs.ssh.knownHosts."fm3170.rsync.net".publicKey =
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdUkGe6kKn5ssz4WRZKjcws0InbQqZayenzk9obmP1z";
+
   # Impermanence wipes /etc (incl. /etc/shadow) every boot, so passwords must be
   # fully declarative: mutableUsers=false makes NixOS re-assert hashedPasswordFile
   # into /etc/shadow on every activation. With the default (true), the sops hash
@@ -745,6 +757,12 @@ in
         }
         {
           command = "${config.system.build.nixos-rebuild}/bin/nixos-rebuild";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          # Allow a manual acceptance/restore-drill run without granting broad
+          # passwordless systemctl access.
+          command = "/run/current-system/sw/bin/systemctl start --no-block borgbackup-job-offsite.service";
           options = [ "NOPASSWD" ];
         }
       ];
