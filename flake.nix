@@ -49,6 +49,16 @@
           ./monado-steamvr-lh-reinit.patch
         ];
       });
+      patchedXrizer = nixpkgs-xr.packages.${system}.xrizer.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [
+          ./xrizer-skyrimvr-monado.patch
+          ./xrizer-standard-pose-components.patch
+          ./xrizer-vulkan-device-lost-cleanup.patch
+        ];
+      });
+      xrizerPatchOverlay = final: prev: {
+        xrizer = patchedXrizer;
+      };
       # Overlay exposing our locally-packaged pikeru as pkgs.pikeru.
       pikeruOverlay = final: prev: {
         pikeru = final.callPackage ./pikeru.nix { src = pikeru-src; };
@@ -63,7 +73,7 @@
         inherit system;
         modules = [
           {
-	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay animutoolsOverlay ];
+	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay animutoolsOverlay xrizerPatchOverlay ];
           }
           ({ ... }: {
             services.monado.package = patchedMonado;
