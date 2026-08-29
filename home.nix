@@ -61,15 +61,10 @@ let
         return 1
       }
 
-      prompt_for_controllers() {
+      remind_about_controllers() {
         notify-send --app-name=start-vr \
-          "VR startup" "Turn on both Index controllers, then continue in the terminal." || true
-        if [ -t 0 ]; then
-          read -r -p "Turn on both Index controllers, then press Enter to start Monado... "
-        else
-          echo "Turn on both Index controllers; starting Monado in 10 seconds..."
-          sleep 10
-        fi
+          "VR startup" "Turn on both Index controllers; Monado will start automatically." || true
+        echo "Turn on both Index controllers; starting Monado automatically..."
       }
 
       if [ "$#" -ne 0 ]; then
@@ -90,30 +85,36 @@ let
 
       if ! systemctl --user is-active --quiet vr-session.target; then
         # Clear a socket-activated instance before the user powers on the
-        # controllers. With standby-on-exit enabled, this may turn off any
-        # controller the old instance already knew about.
+        # controllers. Startup retries leave standby disabled so this does not
+        # turn off a controller the old instance already knew about.
         systemctl --user stop wayvr-debug.service || true
         systemctl --user stop monado.service monado.socket || true
-        prompt_for_controllers
+        remind_about_controllers
+
         systemctl --user start vr-session.target
       fi
 
-      if wait_for_controllers; then
-        exit 0
-      fi
+      # Standby is disabled for ordinary Monado exits, so retries do not turn
+      # off a controller that an earlier attempt already discovered.
+      for attempt in 1 2 3; do
+        if wait_for_controllers; then
+          exit 0
+        fi
 
-      count=$(controller_count)
-      echo "Monado detected only $count of 2 Index controllers; restarting the VR clients."
-      systemctl --user stop wayvr-debug.service || true
-      systemctl --user stop monado.service || true
-      prompt_for_controllers
-      systemctl --user start monado.socket monado.service wayvr-debug.service
+        count=$(controller_count)
+        if [ "$attempt" -eq 3 ]; then
+          echo "Monado detected only $count of 2 Index controllers after $attempt attempts; check its journal." >&2
+          systemctl --user stop vr-session.target || true
+          exit 1
+        fi
 
-      if ! wait_for_controllers; then
-        echo "Monado still did not detect both controllers; check its journal." >&2
-        systemctl --user stop vr-session.target || true
-        exit 1
-      fi
+        echo "Monado detected only $count of 2 Index controllers; restarting the VR clients (attempt $((attempt + 1))/3)."
+        notify-send --app-name=start-vr \
+          "VR controller retry" "Only $count of 2 controllers detected. Make sure both are powered on." || true
+        systemctl --user stop wayvr-debug.service || true
+        systemctl --user stop monado.service || true
+        systemctl --user start monado.socket monado.service wayvr-debug.service
+      done
     '';
   };
 
@@ -126,9 +127,9 @@ let
         exit 2
       fi
 
-      # Stop clients before the runtime. Monado's SteamVR lighthouse driver
-      # then puts the known controllers into standby, and finally the BLE
-      # helper powers down both base stations.
+      # Ordinary Monado exits keep standby disabled so start-vr can retry
+      # safely. Do not use monado-cli test for standby here: its libsurvive
+      # probe leaves this host's Valve radio HID interfaces detached.
       systemctl --user stop wayvr-debug.service || true
       systemctl --user stop monado.service monado.socket || true
       systemctl --user stop vr-lighthouses.service || true
