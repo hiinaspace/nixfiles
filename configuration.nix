@@ -228,6 +228,8 @@ in
 
   # https://wiki.nixos.org/wiki/NVIDIA
   hardware.graphics.enable = true;
+  # Allow UHK Agent to configure and flash Ultimate Hacking Keyboard devices.
+  hardware.keyboard.uhk.enable = true;
 
   # not sure if needed on wayland
   services.xserver.videoDrivers = [ "nvidia" ];
@@ -667,6 +669,7 @@ in
     xwayland-satellite # X11 support for niri; niri >=25.08 auto-spawns it on-demand when in PATH
     mako # sway notifications
     element-desktop
+    uhk-agent
     #factorio-space-age
     pavucontrol
     usbutils # lsusb
