@@ -1,8 +1,8 @@
 diff --git a/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp b/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
-index 3b3c0f5c8..a9e15c9fe 100644
+index 84961eb8..3ac17476 100644
 --- a/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
 +++ b/src/xrt/drivers/steamvr_lh/steamvr_lh.cpp
-@@ -92,7 +92,7 @@ struct steamvr_lh_system
+@@ -102,7 +102,7 @@ struct steamvr_lh_system
  	std::shared_ptr<Context> ctx;
  };
  
@@ -11,7 +11,7 @@ index 3b3c0f5c8..a9e15c9fe 100644
  
  
  // ~/.steam/root is a symlink to where the Steam root is
-@@ -885,18 +885,26 @@ get_roles(struct xrt_system_devices *xsysd, struct xrt_system_roles *out_roles)
+@@ -974,19 +974,27 @@ get_roles(struct xrt_system_devices *xsysd, struct xrt_system_roles *out_roles)
  void
  destroy(struct xrt_system_devices *xsysd)
  {
@@ -21,8 +21,10 @@ index 3b3c0f5c8..a9e15c9fe 100644
  		xrt_device_destroy(&xsysd->static_xdevs[i]);
  	}
  
+-	assert(svrs->ctx.use_count() == 1);
 -	svrs->ctx.reset();
 -	free(svrs);
++	assert(system->ctx.use_count() == 1);
 +	system->ctx.reset();
 +	if (svrs == system) {
 +		svrs = nullptr;
