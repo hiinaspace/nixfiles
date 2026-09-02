@@ -55,6 +55,50 @@ let
 
   llama-cpp-cuda = pkgs.llama-cpp.override { cudaSupport = true; };
 
+  # Keep VRChat's media-focused Proton current independently of the broader
+  # nixpkgs-xr pin.  The upstream package still points at the older GE 10
+  # build; this is the maintained Proton 11 continuation of the same RTSP/MF
+  # patchset.  Give the old package a distinct Steam name so it remains an
+  # immediately selectable fallback.
+  protonRtsp11 =
+    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton-rtsp"; }).overrideAttrs
+      (
+        finalAttrs: _: {
+          pname = "proton-rtsp-bin";
+          version = "proton-rtsp-11.0-20260609-3";
+          src = pkgs.fetchzip {
+            url = "https://github.com/SpookySkeletons/proton-rtsp/releases/download/${finalAttrs.version}/${finalAttrs.version}.tar.gz";
+            hash = "sha256-Toj9kApuJmmZahBjNWJjE/YfiWEXGi2Oq8PYm3Ub+nI=";
+          };
+          meta.homepage = "https://github.com/SpookySkeletons/proton-rtsp";
+        }
+      );
+
+  protonRtsp10Fallback =
+    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton-rtsp-10-fallback"; }).overrideAttrs
+      (
+        finalAttrs: _: {
+          pname = "proton-ge-rtsp-bin";
+          inherit (pkgs.proton-ge-rtsp-bin) version src;
+          meta.homepage = "https://github.com/SpookySkeletons/proton-rtsp";
+        }
+      );
+
+  # GE 11-6 carries newer upstream VRChat AVPro finite-video and livestream
+  # fixes than the June Wine base used by protonRtsp11.  Keep it as an opt-in
+  # comparison build rather than changing VRChat's selected RTSP tool.
+  protonGe116Vrchat =
+    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton11-6-VRChat-test"; }).overrideAttrs
+      (
+        finalAttrs: _: {
+          version = "GE-Proton11-6";
+          src = pkgs.fetchzip {
+            url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${finalAttrs.version}/${finalAttrs.version}-x86_64.tar.gz";
+            hash = "sha256-rX27DUrrrHtR1cgyr/424m9JPjrdASIisVGv2vWzMAs=";
+          };
+        }
+      );
+
   # Synchronize the Niri Wayland clipboard and Xwayland's clipboard for Proton
   # applications. This deliberately uses one event-driven Wayland watcher and
   # a small X11 poller rather than scanning every wayland-N/:N display as
@@ -303,10 +347,14 @@ in
 
   programs.steam = {
     enable = true;
-    extraCompatPackages = with pkgs; [
-      # from https://github.com/nix-community/nixpkgs-xr
+    extraCompatPackages = [
+      # Current VRChat RTSP/Media Foundation fork, packaged locally above.
       # https://lvra.gitlab.io/docs/vrchat/video_players/
-      proton-ge-rtsp-bin
+      protonRtsp11
+      # Keep the previously working nixpkgs-xr build selectable in Steam.
+      protonRtsp10Fallback
+      # Opt-in comparison for the newer upstream AVPro implementation.
+      protonGe116Vrchat
     ];
   };
 
