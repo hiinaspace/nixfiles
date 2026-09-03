@@ -249,5 +249,27 @@ in
         };
       };
     };
+
+    # A persistent calendar timer that expires while the workstation is asleep
+    # fires as soon as the clock resumes, before systemd has necessarily
+    # finished the suspend transaction.  The borgbackup module's sleep
+    # inhibitor cannot be acquired during that short window and otherwise
+    # causes the whole daily run to fail before Borg or the healthcheck hooks
+    # start.  Wait for every sleep variant to finish, and retain a bounded retry
+    # for resume races and other short-lived startup failures.
+    systemd.services."borgbackup-job-${cfg.label}" = {
+      after = [
+        "suspend.target"
+        "hibernate.target"
+        "hybrid-sleep.target"
+        "suspend-then-hibernate.target"
+      ];
+      startLimitIntervalSec = 60 * 60;
+      startLimitBurst = 3;
+      serviceConfig = {
+        Restart = "on-failure";
+        RestartSec = "5min";
+      };
+    };
   };
 }
