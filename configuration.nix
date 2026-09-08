@@ -61,11 +61,13 @@ let
   # patchset.  Give the old package a distinct Steam name so it remains an
   # immediately selectable fallback.
   protonRtsp11 =
-    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton-rtsp"; }).overrideAttrs
+    pkgs.proton-ge-bin.overrideAttrs
       (
         finalAttrs: _: {
+          steamDisplayName = "GE-Proton-rtsp";
           pname = "proton-rtsp-bin";
           version = "proton-rtsp-11.0-20260609-3";
+          toolName = finalAttrs.version; # RTSP manifests omit the architecture suffix.
           src = pkgs.fetchzip {
             url = "https://github.com/SpookySkeletons/proton-rtsp/releases/download/${finalAttrs.version}/${finalAttrs.version}.tar.gz";
             hash = "sha256-Toj9kApuJmmZahBjNWJjE/YfiWEXGi2Oq8PYm3Ub+nI=";
@@ -75,11 +77,19 @@ let
       );
 
   protonRtsp10Fallback =
-    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton-rtsp-10-fallback"; }).overrideAttrs
+    pkgs.proton-ge-bin.overrideAttrs
       (
         finalAttrs: _: {
+          steamDisplayName = "GE-Proton-rtsp-10-fallback";
           pname = "proton-ge-rtsp-bin";
-          inherit (pkgs.proton-ge-rtsp-bin) version src;
+          # Pin the known-good fallback directly: nixpkgs-xr's wrapper still
+          # passes steamDisplayName through the removed .override interface.
+          version = "GE-Proton10-33-rtsp23-4";
+          toolName = finalAttrs.version; # RTSP manifests omit the architecture suffix.
+          src = pkgs.fetchzip {
+            url = "https://github.com/SpookySkeletons/proton-ge-rtsp/releases/download/${finalAttrs.version}/${finalAttrs.version}.tar.gz";
+            hash = "sha256-sP+xNPbeI1jbs081QvFmj48A/yG6IC9ZPZRvGkFZnX0=";
+          };
           meta.homepage = "https://github.com/SpookySkeletons/proton-rtsp";
         }
       );
@@ -88,9 +98,10 @@ let
   # fixes than the June Wine base used by protonRtsp11.  Keep it as an opt-in
   # comparison build rather than changing VRChat's selected RTSP tool.
   protonGe116Vrchat =
-    (pkgs.proton-ge-bin.override { steamDisplayName = "GE-Proton11-6-VRChat-test"; }).overrideAttrs
+    pkgs.proton-ge-bin.overrideAttrs
       (
         finalAttrs: _: {
+          steamDisplayName = "GE-Proton11-6-VRChat-test";
           version = "GE-Proton11-6";
           src = pkgs.fetchzip {
             url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${finalAttrs.version}/${finalAttrs.version}-x86_64.tar.gz";

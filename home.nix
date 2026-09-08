@@ -1,19 +1,8 @@
 { config, pkgs, inputs, ... }:
 
 let
-  # The retry support landed immediately after the latest 1.4.0 release, so
-  # pin upstream master until nixpkgs updates lighthouse-steamvr.
-  lighthouse-steamvr = pkgs.lighthouse-steamvr.overrideAttrs (old: {
-    version = "1.4.0-unstable-2026-07-14";
-    src = pkgs.fetchFromGitHub {
-      owner = "ShayBox";
-      repo = "Lighthouse";
-      rev = "d069399af2d493b0c540095a495c68e74e75adfe";
-      hash = "sha256-u6xO0l+p7NBGSdB6JTlWDdFapl17TxZ9UdQ2r2O7dIQ=";
-    };
-    # The retry patch does not change Cargo.lock.
-    cargoHash = old.cargoHash;
-  });
+  # Lighthouse 2.0.0 includes our base-station write retries.
+  lighthouse-steamvr = pkgs.lighthouse-steamvr;
 
   vr-lighthouses = pkgs.writeShellApplication {
     name = "vr-lighthouses";

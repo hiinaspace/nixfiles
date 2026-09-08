@@ -4,7 +4,7 @@
 , pkg-config
 , scdoc
 , makeWrapper
-, ffmpeg
+, ffmpeg_8
 , poppler-utils
 , fontconfig
 , freetype
@@ -22,6 +22,10 @@
 }:
 
 let
+  # video-rs currently locks ffmpeg-next 8.x; FFmpeg 9 removed APIs it uses.
+  # Keep the headers, linked libraries, and thumbnail CLI on the same major.
+  ffmpeg = ffmpeg_8;
+
   # Libraries iced/wgpu dlopen()s at runtime; they must be on the loader path.
   runtimeLibs = [
     vulkan-loader
