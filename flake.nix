@@ -18,6 +18,9 @@
       flake = false;
     };
 
+    # https://github.com/sadjow/codex-cli-nix
+    codex-cli-nix.url = "github:sadjow/codex-cli-nix";
+
     # Source-only input: pinned in flake.lock, packaged locally in ./animutools.nix.
     # Local edits to the checkout in ~/code/animutools are NOT picked up here —
     # push to github, then `nix flake update animutools-src` + rebuild.
@@ -40,7 +43,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence }:
+  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -95,6 +98,8 @@
             # Safety net for the standalone->module transition: back up any colliding
             # file instead of aborting activation.
             home-manager.backupFileExtension = "hm-bak";
+
+	    home-manager.extraSpecialArgs = { inherit inputs; };
             home-manager.users.s = import ./home.nix;
           }
         ];
@@ -108,6 +113,9 @@
           config.allowUnfree = true;
         };
       in pkgs.mkShell {
+        buildInputs = [
+          codex-cli-nix.packages.${system}.default
+        ];
         packages = with pkgs; [
           git
           gitleaks
