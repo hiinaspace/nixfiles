@@ -791,6 +791,7 @@ in
 
   users.users.s = {
     isNormalUser = true;
+    linger = true; # Keep the Codex user service available without a desktop login.
     # sudo, video and input for maybe VR compat
     extraGroups = [ "wheel" "video" "input" "audio" ];
     packages = with pkgs; [

@@ -20,6 +20,7 @@
 
     # https://github.com/sadjow/codex-cli-nix
     codex-cli-nix.url = "github:sadjow/codex-cli-nix";
+    codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux/758b4ce74301c387c6006698921384d4ca1dc47d";
 
     # Source-only input: pinned in flake.lock, packaged locally in ./animutools.nix.
     # Local edits to the checkout in ~/code/animutools are NOT picked up here —
@@ -43,7 +44,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix }:
+  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix, codex-desktop-linux }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;

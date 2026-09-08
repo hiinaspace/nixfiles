@@ -159,7 +159,7 @@ let
   };
 
 in {
-  imports = [ ./synthv.nix ];
+  imports = [ ./synthv.nix ./codex-desktop.nix ];
 
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
