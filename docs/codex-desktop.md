@@ -13,6 +13,15 @@ messages on ~/.codex/app-server-control/app-server-control.sock. Codex 0.153.4's
 stdio JSON to this WebSocket listener. WebSocket compression must be disabled.
 The adapter uses Nix-packaged Python/websockets, not uv or a /tmp script.
 
+Desktop passes its `codex_app` MCP definition through launch-time `-c` flags.
+The adapter merges those MCP defaults into `thread/start`, `thread/resume`, and
+`thread/fork` requests, with request settings taking precedence. Without this,
+Desktop's per-thread `enabled_tools` override creates an MCP entry without a
+command and fails with `invalid transport`. These defaults stay connection-local:
+the Desktop pipe path changes on restart and must not be saved in config.toml
+or applied globally to the shared server. Server-wide flags still belong in
+the `codex-remote-control` service's ExecStart.
+
 Remote host: phone or Natto Desktop -> Sayu's single server.
 Local UI: Sayu Desktop -> adapter -> the same server.
 Do not start a second app-server on the same socket. Prefer Remote's
