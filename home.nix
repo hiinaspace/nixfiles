@@ -13,10 +13,12 @@ let
         exit 2
       fi
 
+      # 2.0.0 requires lowercase, colon-separated IDs. Omit the unstable hciN
+      # prefix so Bluetooth adapter renumbering does not skip the stations.
       exec lighthouse -vv \
         --state "$1" \
-        --bsid "hci0/dev_DC_01_7A_6B_04_AD" \
-        --bsid "hci0/dev_F6_4A_4B_5B_EE_CB" \
+        --bsid "dc:01:7a:6b:04:ad" \
+        --bsid "f6:4a:4b:5b:ee:cb" \
         --retries 5 \
         --retry-delay 2
     '';
