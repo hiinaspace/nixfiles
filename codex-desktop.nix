@@ -31,6 +31,7 @@ let
     '';
   };
 in {
+  imports = [ ./keyring-prompter.nix ];
   home.packages = [ launcher ];
 
   # One owner for local Desktop, phone Remote, and SSH app-server proxies.
@@ -54,7 +55,8 @@ in {
   systemd.user.services.codex-desktop = {
     Unit = {
       Description = "ChatGPT desktop connected to the shared Codex server";
-      After = [ "graphical-session.target" "codex-remote-control.service" ];
+      After = [ "graphical-session.target" "codex-remote-control.service" "keyring-prompter.service" ];
+      Wants = [ "keyring-prompter.service" ];
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
