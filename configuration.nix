@@ -301,7 +301,15 @@ in
     # https://nixos.wiki/wiki/Nvidia
     # Override to add BSB2 DSC fix patch (https://github.com/triple-groove/nvidia-bsb-dsc-fix)
     package =
-      let base = config.boot.kernelPackages.nvidiaPackages.latest;
+      # Trial for recurring Monado Xid 51/154; see docs/nvidia-reset-20260917.md.
+      # Keep nixpkgs/kernel fixed and retain the Beyond DSC patch below.
+      let base = config.boot.kernelPackages.nvidiaPackages.mkDriver {
+        version = "615.71.09";
+        sha256_64bit = "sha256-zc7tIrvrYSSNGm3qvCWWZz46ZQFpjucayNL9wo87cP4=";
+        openSha256 = "sha256-3gByMYIwFzRaLdDG+roCEOuKRRJDrljG9AlLnRZTirM=";
+        settingsSha256 = "sha256-LK1LU8mDkM/XVRKPBtuOZh9nIP/lGFLAJnmasEX8jhg=";
+        persistencedSha256 = "sha256-qPRb+3d88+2RcpUkoBTbjIaImnQ+jX+/6p1vXcJ5geE=";
+      };
       in base // {
         open = base.open.overrideAttrs (old: {
           patches = (old.patches or []) ++ [ ./bsb-dsc-fix.patch ];
