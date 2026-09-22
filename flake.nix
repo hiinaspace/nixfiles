@@ -20,7 +20,7 @@
 
     # https://github.com/sadjow/codex-cli-nix
     codex-cli-nix.url = "github:sadjow/codex-cli-nix";
-    codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux/758b4ce74301c387c6006698921384d4ca1dc47d";
+    codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux/49d5bc1c38aba9d25c1c798c1fffad8918390ae1";
 
     # Source-only input: pinned in flake.lock, packaged locally in ./animutools.nix.
     # Local edits to the checkout in ~/code/animutools are NOT picked up here —
