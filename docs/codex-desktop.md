@@ -1,6 +1,10 @@
 # Codex desktop and shared app-server on sayu
 
-`codex-desktop.nix` installs the pinned ilysenko remote-mobile desktop variant.
+`codex-desktop.nix` installs the ilysenko remote-mobile desktop variant. The
+upstream Nix flake currently lags OpenAI's official Linux repository, so the
+module temporarily overrides its package input with the verified official
+`chatgpt_26.917.51856_amd64.deb` package. Remove that override once the
+upstream flake carries the same or newer package pin.
 `codex-remote-control.service` is a systemd user service enabled at boot;
 `users.users.s.linger = true` keeps the user manager running without login.
 `codex-desktop.service` starts the UI with the graphical session and stops it
@@ -75,6 +79,8 @@ Check the default alias with:
 
     busctl --user call org.freedesktop.secrets /org/freedesktop/secrets org.freedesktop.Secret.Service ReadAlias s default
 
-Updates: edit the pinned codex-desktop-linux revision in flake.nix, update the
-lock, build, and retest the adapter and phone/desktop access. Keep the CLI and
-server transport compatible. App updates are managed through Nix.
+Updates: update the pinned codex-desktop-linux revision in flake.nix, update the
+lock, and remove or revise the temporary official-package override above when
+upstream catches up. Build and retest the adapter and phone/desktop access.
+Keep the CLI and server transport compatible. App updates are managed through
+Nix.
