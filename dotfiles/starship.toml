@@ -78,10 +78,6 @@ $pixi\
 $meson\
 $spack\
 $memory_usage\
-$aws\
-$gcloud\
-$openstack\
-$azure\
 $crystal\
 $custom\
 $status\

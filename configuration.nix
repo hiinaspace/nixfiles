@@ -210,6 +210,7 @@ in
       ./cachix.nix
       ./backup.nix
       ./offsite-borg.nix
+      ./steamvr-native.nix
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -947,7 +948,7 @@ in
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
+  networking.firewall.allowedUDPPorts = [ 7778 ]; # FPSloppa server
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 
