@@ -5,7 +5,49 @@ import os
 from pathlib import Path
 import re
 import shlex
+import struct
+import subprocess
 import sys
+
+
+def fix_forefront_render_scale(prefix, proton):
+    """Update the existing PlayerPrefs value only while its Wine server is idle."""
+    registry = prefix / "pfx/user.reg"
+    data = registry.read_bytes()
+    pattern = rb'(?m)^"ResolutionScale_h998708403"=hex\(4\):([^\r\n]+)'
+    matches = list(re.finditer(pattern, data))
+    if len(matches) != 1:
+        sys.exit("Cannot locate Forefront's render scale; launch it normally once and set its in-game render scale to 1.0.")
+    old_value = matches[0].group(1).decode("ascii")
+    desired = struct.pack("<d", 1.0).hex(",")
+    if old_value == desired:
+        return
+    # Writing user.reg while wineserver owns the registry can be overwritten.
+    # Wait for this prefix only; do not stop another game's Wine processes.
+    try:
+        subprocess.run([
+            "steam-run", str(proton.parent / "files/bin/wineserver"), "-w",
+        ], env=dict(os.environ, WINEPREFIX=str(prefix / "pfx")),
+            timeout=5, check=True, stdout=subprocess.DEVNULL)
+    except subprocess.TimeoutExpired:
+        sys.exit("Close Forefront completely before applying its Frame render-scale workaround.")
+    # Wine can flush the old setting as it exits, so re-read after waiting.
+    data = registry.read_bytes()
+    matches = list(re.finditer(pattern, data))
+    if len(matches) != 1:
+        sys.exit("Forefront's render-scale registry value changed unexpectedly; no edit made.")
+    state = Path.home() / ".local/state/forefront-frame"
+    state.mkdir(parents=True, exist_ok=True)
+    backup = state / "render-scale-before-workaround.json"
+    if not backup.exists():
+        backup.write_text(json.dumps({
+            "registry": str(registry),
+            "original_line": matches[0].group(0).decode("ascii"),
+        }, indent=2) + "\n")
+    replacement = b'"ResolutionScale_h998708403"=hex(4):' + desired.encode("ascii")
+    registry.write_bytes(re.sub(pattern, lambda _: replacement, data))
+    print("Forefront Frame workaround: in-game render scale set to 1.0.", flush=True)
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--game", choices=("vrchat", "forefront"), default="vrchat")
@@ -95,9 +137,13 @@ if args.dry_run:
     print("OpenXR:", env["XR_RUNTIME_JSON"])
     print("Prefix:", prefix)
     print("Steam video token:", "available" if video_token else "missing")
+    if args.game == "forefront":
+        print("Workaround: in-game render scale 1.0 (applied on launch)")
     sys.exit(0)
 if not any((p / "comm").read_text().strip() == "vrserver" for p in Path("/proc").iterdir() if p.name.isdigit() and (p / "comm").exists()):
     sys.exit("Start the Frame SteamVR session and connect the headset first.")
+if args.game == "forefront":
+    fix_forefront_render_scale(prefix, proton)
 # Proton's native OpenVR bridge also consults the host registry. A Home
 # Manager activation can replace our session's temporary selection with the
 # default XRizer symlink while SteamVR remains running. Reassert the session

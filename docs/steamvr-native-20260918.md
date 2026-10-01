@@ -18,6 +18,13 @@ NVIDIA 615.71.09, kernel 6.18.49. User confirmed tracking, dashboard and Home.
   Add `--dry-run` to inspect the command without starting the game.
   Both commands inherit Steam's video authorization token and repair the
   active session's OpenVR registry after Home Manager activations.
+  `forefront-frame` also sets Forefront's existing in-game render scale to
+  1.0 before launch. If a change is needed, it waits up to five seconds for
+  that game's Wine server to exit, preserves the previous value under
+  `~/.local/state/forefront-frame/render-scale-before-workaround.json`, and
+  changes only that PlayerPrefs value. This persists in the shared game
+  prefix, including when later using Monado; restore the preferred scale
+  through Forefront's settings when switching runtimes.
 - `stop-steamvr` stops the native runtime, restores the exact previous OpenVR
   registry symlink/file, and leaves the lighthouses powered on.
 - `journalctl --user -u steamvr-native` and Steam's `logs/vrserver.txt` /
@@ -57,3 +64,26 @@ The Beyond DSC patch and NVIDIA version were preserved. No reboot was required.
   and orderly disable. Windows and long-session performance remain separate gates.
 
 Primary setup reference: https://vronlinux.org/docs/hardware/bigscreen-beyond/
+
+## Forefront Frame projection workaround, September 30, 2026
+
+Forefront uses Unity OpenXR with single-pass-instanced rendering through
+SteamVR/OpenXR 2.18.1 and Proton-RTSP 11. With its in-game `ResolutionScale=1.4`,
+the user observed a normal left eye but a severely distorted right eye.
+SteamVR per-app resolution 85% (2436x2436) and 87% (2468x2468) worked;
+89% (2496x2496), 90% (2508x2508), 99% (2632x2632), and 100% (2644x2644) failed.
+These are dimensions from Unity's OpenXR diagnostic report, not a capture
+of the game's internal intermediate render targets.
+
+Keeping SteamVR at 100% and reducing the in-game scale to 1.0 fixed the
+projection, confirmed in the headset and by `ResolutionScale=1` plus
+2644x2644 swapchain dimensions in `Player.log`. This is the launcher default
+workaround; the underlying Unity/Proton/SteamVR fault is not established.
+It persists with the SteamVR dashboard closed. Forefront's swapchains did
+not resize during live SteamVR slider changes: relaunch between tests.
+
+SteamVR's per-app setting is `steam.app.2981220.resolutionScale` (integer
+percentage). The global `steamvr.supersampleScale` is a different setting;
+using that key in the per-app section did not lower the resolution.
+Final tested settings are global scale 1.0, per-app resolution 100%,
+and Forefront's in-game scale 1.0.
