@@ -1,0 +1,100 @@
+diff --git a/server/encoder/video_encoder.cpp b/server/encoder/video_encoder.cpp
+index 6c564027..6c6eb785 100644
+--- a/server/encoder/video_encoder.cpp
++++ b/server/encoder/video_encoder.cpp
+@@ -28,6 +28,7 @@
+ #include "wivrn_config.h"
+ 
+ #include <string>
++#include <cstdlib>
+ 
+ #if WIVRN_USE_NVENC
+ #include "video_encoder_nvenc.h"
+@@ -298,8 +299,16 @@ void video_encoder::encode(wivrn_session & cnx,
+ void video_encoder::SendData(std::span<uint8_t> data, bool end_of_frame, bool control)
+ {
+ 	std::lock_guard lock(mutex);
++	static const bool diagnostics = std::getenv("WIVRN_VIDEO_SEND_STATS") != nullptr;
+ 	if (shard.shard_idx == 0)
+ 	{
++		if (diagnostics)
++		{
++			send_stats.frame_begin = os_monotonic_get_ns();
++			send_stats.frame_bytes = 0;
++			if (!send_stats.window_begin)
++				send_stats.window_begin = send_stats.frame_begin;
++		}
+ 		// One SendData call per NAL; span the whole frame, not each call.
+ 		wivrn::trace::cpu_begin(wivrn::trace::cpu_track::network, stream_idx, shard.frame_idx, "SendData");
+ 		timing_info.send_begin = clock.to_headset(os_monotonic_get_ns());
+@@ -327,6 +336,11 @@ void video_encoder::SendData(std::span<uint8_t> data, bool end_of_frame, bool co
+ 				shard.timing_info = timing_info;
+ 		}
+ 		shard.payload = {begin, next};
++		if (diagnostics)
++		{
++			send_stats.frame_bytes += shard.payload.size();
++			++send_stats.packets;
++		}
+ 		try
+ 		{
+ 			if (control)
+@@ -336,12 +350,33 @@ void video_encoder::SendData(std::span<uint8_t> data, bool end_of_frame, bool co
+ 		}
+ 		catch (...)
+ 		{
++			if (diagnostics)
++				++send_stats.failures;
+ 			// Ignore network errors
+ 		}
+ 		++shard.shard_idx;
+ 		shard.view_info.reset();
+ 		begin = next;
+ 	}
++	if (end_of_frame && diagnostics)
++	{
++		auto now = os_monotonic_get_ns();
++		++send_stats.frames;
++		send_stats.bytes += send_stats.frame_bytes;
++		send_stats.max_frame_bytes = std::max(send_stats.max_frame_bytes, send_stats.frame_bytes);
++		send_stats.max_frame_ns = std::max(send_stats.max_frame_ns, now - send_stats.frame_begin);
++		if (now - send_stats.window_begin >= 1'000'000'000)
++		{
++			U_LOG_I("video send stats stream=%u transport=%s frames=%llu payload_Mbps=%.2f packets=%llu failures=%llu max_frame_bytes=%llu max_send_ms=%.3f",
++			        unsigned(stream_idx), cnx->has_stream() ? "udp" : "tcp",
++			        (unsigned long long)send_stats.frames,
++			        send_stats.bytes * 8000.0 / (now - send_stats.window_begin),
++			        (unsigned long long)send_stats.packets, (unsigned long long)send_stats.failures,
++			        (unsigned long long)send_stats.max_frame_bytes, send_stats.max_frame_ns / 1e6);
++			send_stats = {};
++			send_stats.window_begin = now;
++		}
++	}
+ 	if (end_of_frame)
+ 		wivrn::trace::cpu_end(wivrn::trace::cpu_track::network, stream_idx, shard.frame_idx, "SendData");
+ }
+diff --git a/server/encoder/video_encoder.h b/server/encoder/video_encoder.h
+index 12c1bf34..219f8e64 100644
+--- a/server/encoder/video_encoder.h
++++ b/server/encoder/video_encoder.h
+@@ -96,6 +96,20 @@ private:
+ 
+ 	std::mutex mutex;
+ 
++	// Optional, aggregated send diagnostics; does not change packet delivery.
++	struct send_diagnostics
++	{
++		uint64_t window_begin = 0;
++		uint64_t frame_begin = 0;
++		uint64_t frame_bytes = 0;
++		uint64_t frames = 0;
++		uint64_t bytes = 0;
++		uint64_t packets = 0;
++		uint64_t failures = 0;
++		uint64_t max_frame_bytes = 0;
++		uint64_t max_frame_ns = 0;
++	} send_stats;
++
+ 	// temporary data
+ 	wivrn_session * cnx;
+ 

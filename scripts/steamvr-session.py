@@ -10,7 +10,9 @@ import time
 
 home = Path.home()
 steam = home / ".local/share/Steam"
-runtime = steam / "steamapps/common/SteamVR"
+runtime = Path(os.environ.get("STEAMVR_RUNTIME_DIR", str(steam / "steamapps/common/SteamVR"))).expanduser().resolve()
+if not (runtime / "bin/linux64/vrstartup").is_file():
+    sys.exit(f"SteamVR startup executable missing: {runtime}")
 registry = home / ".config/openvr/openvrpaths.vrpath"
 state = Path(os.environ["XDG_RUNTIME_DIR"]) / "steamvr-native"
 state.mkdir(mode=0o700, exist_ok=True)

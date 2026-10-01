@@ -1,4 +1,4 @@
-"""Launch a game through Proton and SteamVR, bypassing saved Steam options."""
+"""Launch a game through Proton and an explicit XR runtime, bypassing saved Steam options."""
 import argparse
 import json
 import os
@@ -52,6 +52,9 @@ def fix_forefront_render_scale(prefix, proton):
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--game", choices=("vrchat", "forefront"), default="vrchat")
 parser.add_argument("--dry-run", action="store_true")
+parser.add_argument("--backend", choices=("steamvr", "wivrn"), default="steamvr")
+parser.add_argument("--xr-runtime", type=Path)
+parser.add_argument("--openvr-runtime", type=Path)
 args, game_args = parser.parse_known_args()
 appid, title, executable, default_args = {
     "vrchat": ("438100", "VRChat", "launch.exe", []),
@@ -59,7 +62,14 @@ appid, title, executable, default_args = {
 }[args.game]
 steam = Path.home() / ".local/share/Steam"
 game = steam / "steamapps/common" / title
-runtime = steam / "steamapps/common/SteamVR"
+runtime = Path(os.environ.get("STEAMVR_RUNTIME_DIR", str(steam / "steamapps/common/SteamVR"))).expanduser().resolve()
+if args.backend == "wivrn":
+    if args.xr_runtime is None or args.openvr_runtime is None:
+        parser.error("WiVRn requires --xr-runtime and --openvr-runtime")
+    runtime = args.openvr_runtime
+    xr_manifest = args.xr_runtime
+else:
+    xr_manifest = runtime / "steamxr_linux64.json"
 env = os.environ.copy()
 steam_env = None
 for proc in Path("/proc").iterdir():
@@ -104,7 +114,7 @@ for tool in tools:
 if proton is None:
     sys.exit("Cannot find the configured GE-Proton-rtsp tool in the running Steam environment.")
 entry = steam / "steamapps/common/SteamLinuxRuntime_4/_v2-entry-point"
-for path in (proton, entry, game / executable, runtime / "steamxr_linux64.json"):
+for path in (proton, entry, game / executable, xr_manifest):
     if not path.is_file():
         sys.exit(f"Missing required file: {path}")
 prefix = steam / "steamapps/compatdata" / appid
@@ -127,9 +137,14 @@ env.update({
     "STEAM_COMPAT_TOOL_PATHS": str(proton.parent) + ":" + str(entry.parent),
     "PRESSURE_VESSEL_FILESYSTEMS_RO": "/nix:/run/current-system",
     "VR_OVERRIDE": str(runtime),
-    "XR_RUNTIME_JSON": str(runtime / "steamxr_linux64.json"),
+    "XR_RUNTIME_JSON": str(xr_manifest),
+    "PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES": "1",
     "PROTON_LOG": "1",
 })
+if args.backend == "wivrn":
+    env["PULSE_SINK"] = "wivrn.sink"
+    env["PULSE_SOURCE"] = "wivrn.source"
+    env["PRESSURE_VESSEL_FILESYSTEMS_RW"] = str(Path(os.environ["XDG_RUNTIME_DIR"]) / "wivrn")
 command = ["steam-run", str(entry), "--verb=waitforexitandrun", "--", str(proton), "waitforexitandrun", str(game / executable), *default_args, *game_args]
 if args.dry_run:
     print(shlex.join(command))
@@ -137,26 +152,35 @@ if args.dry_run:
     print("OpenXR:", env["XR_RUNTIME_JSON"])
     print("Prefix:", prefix)
     print("Steam video token:", "available" if video_token else "missing")
-    if args.game == "forefront":
+    if args.game == "forefront" and args.backend == "steamvr":
         print("Workaround: in-game render scale 1.0 (applied on launch)")
     sys.exit(0)
-if not any((p / "comm").read_text().strip() == "vrserver" for p in Path("/proc").iterdir() if p.name.isdigit() and (p / "comm").exists()):
-    sys.exit("Start the Frame SteamVR session and connect the headset first.")
-if args.game == "forefront":
-    fix_forefront_render_scale(prefix, proton)
-# Proton's native OpenVR bridge also consults the host registry. A Home
-# Manager activation can replace our session's temporary selection with the
-# default XRizer symlink while SteamVR remains running. Reassert the session
-# selection by replacing the link, retaining its original restoration backup.
-registry = Path.home() / ".config/openvr/openvrpaths.vrpath"
-selection = json.loads(registry.read_text())
-if selection.get("runtime") != [str(runtime)]:
-    backup = registry.with_name("openvrpaths.vrpath.before-steamvr")
-    if not (backup.exists() or backup.is_symlink()):
-        sys.exit("SteamVR session registry backup is missing; restart the Frame SteamVR session.")
-    selection["runtime"] = [str(runtime)]
-    temporary = registry.with_name("openvrpaths.vrpath.frame-new")
-    temporary.write_text(json.dumps(selection, indent=2) + "\n")
-    os.replace(temporary, registry)
+if args.backend == "wivrn":
+    ipc = Path(os.environ["XDG_RUNTIME_DIR"]) / "wivrn/comp_ipc"
+    if not ipc.is_socket():
+        sys.exit("Start WiVRn and connect the Frame first (WiVRn compositor socket is missing).")
+    registry = Path.home() / ".config/openvr/openvrpaths.vrpath"
+    selection = json.loads(registry.read_text())
+    if selection.get("runtime") != [str(runtime)]:
+        sys.exit("The host OpenVR registry is not set to XRizer; stop SteamVR and restore the normal registry before launching.")
+else:
+    if not any((p / "comm").read_text().strip() == "vrserver" for p in Path("/proc").iterdir() if p.name.isdigit() and (p / "comm").exists()):
+        sys.exit("Start the Frame SteamVR session and connect the headset first.")
+    if args.game == "forefront":
+        fix_forefront_render_scale(prefix, proton)
+    # Proton's native OpenVR bridge also consults the host registry. A Home
+    # Manager activation can replace our session's temporary selection with the
+    # default XRizer symlink while SteamVR remains running. Reassert the session
+    # selection by replacing the link, retaining its original restoration backup.
+    registry = Path.home() / ".config/openvr/openvrpaths.vrpath"
+    selection = json.loads(registry.read_text())
+    if selection.get("runtime") != [str(runtime)]:
+        backup = registry.with_name("openvrpaths.vrpath.before-steamvr")
+        if not (backup.exists() or backup.is_symlink()):
+            sys.exit("SteamVR session registry backup is missing; restart the Frame SteamVR session.")
+        selection["runtime"] = [str(runtime)]
+        temporary = registry.with_name("openvrpaths.vrpath.frame-new")
+        temporary.write_text(json.dumps(selection, indent=2) + "\n")
+        os.replace(temporary, registry)
 os.chdir(game)
 os.execvpe(command[0], command, env)

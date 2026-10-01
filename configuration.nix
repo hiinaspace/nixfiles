@@ -211,6 +211,7 @@ in
       ./backup.nix
       ./offsite-borg.nix
       ./steamvr-native.nix
+      ./wivrn-frame.nix
     ];
 
   # Use the systemd-boot EFI boot loader.

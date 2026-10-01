@@ -1,0 +1,43 @@
+diff --git a/server/driver/wivrn_session.cpp b/server/driver/wivrn_session.cpp
+index 717e576f..9b99dca6 100644
+--- a/server/driver/wivrn_session.cpp
++++ b/server/driver/wivrn_session.cpp
+@@ -54,6 +54,8 @@
+ 
+ #include <algorithm>
+ #include <chrono>
++#include <cstdlib>
++#include <fstream>
+ #include <magic_enum.hpp>
+ #include <multi/comp_multi_interface.h>
+ #include <stdexcept>
+@@ -798,6 +800,29 @@ void wivrn_session::operator()(from_headset::timesync_response && timesync)
+ 
+ void wivrn_session::operator()(from_headset::feedback && feedback)
+ {
++	// Opt-in export of the same headset feedback used by the timing graph.
++	static std::ofstream timing_csv = [] {
++		std::ofstream file;
++		if (const char * path = std::getenv("WIVRN_FRAME_TIMINGS"))
++		{
++			file.open(path);
++			if (!file)
++				U_LOG_W("Cannot open WIVRN_FRAME_TIMINGS file");
++			else
++				file << "frame,stream,encode_begin,encode_end,send_begin,send_end,receive_begin,receive_end,decode_begin,decode_end,blit,display,times_displayed\n";
++		}
++		return file;
++	}();
++	if (timing_csv.is_open())
++	{
++		timing_csv << feedback.frame_index << ',' << unsigned(feedback.stream_index) << ','
++		           << feedback.encode_begin << ',' << feedback.encode_end << ','
++		           << feedback.send_begin << ',' << feedback.send_end << ','
++		           << feedback.received_first_packet << ',' << feedback.received_last_packet << ','
++		           << feedback.sent_to_decoder << ',' << feedback.received_from_decoder << ','
++		           << feedback.blitted << ',' << feedback.displayed << ','
++		           << unsigned(feedback.times_displayed) << '\n';
++	}
+ 	clock_offset o = offset_est.get_offset();
+ 	if (not o)
+ 		return;

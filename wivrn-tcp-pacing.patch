@@ -1,0 +1,40 @@
+diff --git a/common/wivrn_sockets.cpp b/common/wivrn_sockets.cpp
+index bc1341d6..74336228 100644
+--- a/common/wivrn_sockets.cpp
++++ b/common/wivrn_sockets.cpp
+@@ -23,6 +23,8 @@
+ #include <algorithm>
+ #include <arpa/inet.h>
+ #include <cassert>
++#include <charconv>
++#include <cstdlib>
+ #include <memory>
+ #include <netdb.h>
+ #include <netinet/ip.h>
+@@ -154,6 +156,26 @@ void wivrn::TCP::init()
+ 	}
+ 
+ 	mutex = std::make_unique<std::mutex>();
++
++	// Opt-in experiment: constrain TCP bursts without changing video bitrate.
++	if (const char * value = std::getenv("WIVRN_TCP_MAX_PACING_MBPS"))
++	{
++		uint32_t mbps = 0;
++		const char * end = value + ::strlen(value);
++		auto parsed = std::from_chars(value, end, mbps);
++		if (parsed.ec != std::errc{} || parsed.ptr != end || mbps == 0)
++		{
++			::close(fd);
++			throw std::invalid_argument("WIVRN_TCP_MAX_PACING_MBPS must be a positive integer");
++		}
++		uint64_t bytes_per_second = uint64_t(mbps) * 1'000'000 / 8;
++		if (setsockopt(fd, SOL_SOCKET, SO_MAX_PACING_RATE, &bytes_per_second, sizeof(bytes_per_second)) < 0)
++		{
++			int error = errno;
++			::close(fd);
++			throw std::system_error{error, std::generic_category(), "SO_MAX_PACING_RATE"};
++		}
++	}
+ }
+ 
+ wivrn::TCP::TCP(int fd)

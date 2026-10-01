@@ -9,6 +9,10 @@
     # more up to date VR stuff
     # https://github.com/nix-community/nixpkgs-xr
     nixpkgs-xr.url = "github:nix-community/nixpkgs-xr";
+    wivrn-src = {
+      url = "github:WiVRn/WiVRn/3e73d98ae22cfdc2cdd6a3a0db7e41a958bba936";
+      flake = false;
+    };
     comfyui-nix.url = "github:utensils/comfyui-nix";
 
     # Source-only input: pinned in flake.lock, packaged locally in ./pikeru.nix.
@@ -44,7 +48,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix, codex-desktop-linux }:
+  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, wivrn-src, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix, codex-desktop-linux }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -60,6 +64,9 @@
           ./xrizer-vulkan-device-lost-cleanup.patch
         ];
       });
+      wivrnOverlay = final: prev: {
+        wivrn-frame = final.callPackage ./wivrn-local.nix { src = wivrn-src; };
+      };
       xrizerPatchOverlay = final: prev: {
         xrizer = patchedXrizer;
       };
@@ -77,7 +84,7 @@
         inherit system;
         modules = [
           {
-	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay animutoolsOverlay xrizerPatchOverlay ];
+	    nixpkgs.overlays = [ comfyui-nix.overlays.default pikeruOverlay animutoolsOverlay xrizerPatchOverlay wivrnOverlay ];
           }
           ({ ... }: {
             services.monado.package = patchedMonado;
@@ -107,21 +114,25 @@
       };
     };
 
-    devShells.${system}.default =
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          config.allowUnfree = true;
+    packages.${system}.wivrn-frame = self.nixosConfigurations.sayu.pkgs.wivrn-frame;
+    devShells.${system} = {
+      wivrn = self.nixosConfigurations.sayu.pkgs.wivrn-frame;
+      default =
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in pkgs.mkShell {
+          buildInputs = [
+            codex-cli-nix.packages.${system}.default
+          ];
+          packages = with pkgs; [
+            git
+            gitleaks
+            pre-commit
+          ];
         };
-      in pkgs.mkShell {
-        buildInputs = [
-          codex-cli-nix.packages.${system}.default
-        ];
-        packages = with pkgs; [
-          git
-          gitleaks
-          pre-commit
-        ];
-      };
+    };
   };
 }

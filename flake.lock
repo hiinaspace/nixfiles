@@ -414,7 +414,8 @@
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-xr": "nixpkgs-xr",
         "pikeru-src": "pikeru-src",
-        "sops-nix": "sops-nix"
+        "sops-nix": "sops-nix",
+        "wivrn-src": "wivrn-src"
       }
     },
     "sops-nix": {
@@ -500,6 +501,23 @@
       "original": {
         "owner": "numtide",
         "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "wivrn-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790753139,
+        "narHash": "sha256-8+55OetDA1CFocNunbeTTl7yXrtn8QkeTUAWjR6HEUg=",
+        "owner": "WiVRn",
+        "repo": "WiVRn",
+        "rev": "3e73d98ae22cfdc2cdd6a3a0db7e41a958bba936",
+        "type": "github"
+      },
+      "original": {
+        "owner": "WiVRn",
+        "repo": "WiVRn",
+        "rev": "3e73d98ae22cfdc2cdd6a3a0db7e41a958bba936",
         "type": "github"
       }
     }
