@@ -32,7 +32,12 @@ let
   vrchatFrame = pkgs.writeShellApplication {
     name = "vrchat-frame";
     runtimeInputs = [ pkgs.python3 pkgs.steam-run ];
-    text = ''exec python3 ${./scripts/vrchat-frame.py} "$@"'';
+    text = ''exec python3 ${./scripts/steamvr-frame-game.py} --game vrchat "$@"'';
+  };
+  forefrontFrame = pkgs.writeShellApplication {
+    name = "forefront-frame";
+    runtimeInputs = [ pkgs.python3 pkgs.steam-run ];
+    text = ''exec python3 ${./scripts/steamvr-frame-game.py} --game forefront "$@"'';
   };
 in {
   # Standard SteamVR capability, reapplied on rebuild after SteamVR updates.
@@ -43,7 +48,7 @@ in {
     fi
   '';
   home-manager.users.s = {
-    home.packages = [ start stop run vrchatFrame ];
+    home.packages = [ start stop run vrchatFrame forefrontFrame ];
     systemd.user.services.steamvr-native = {
       Unit = {
         Description = "Native SteamVR with temporary OpenVR selection";

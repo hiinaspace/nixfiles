@@ -9,6 +9,15 @@ NVIDIA 615.71.09, kernel 6.18.49. User confirmed tracking, dashboard and Home.
   Monado or SteamVR server. It powers the lighthouses using the existing service.
 - `steamvr-run COMMAND ...` selects native SteamVR's OpenVR/OpenXR libraries for
   that command, inside the Steam FHS environment.
+- `vrchat-frame [ARGS...]` and `forefront-frame [ARGS...]` launch the games
+  directly through the configured Proton-RTSP 11 and Steam Linux Runtime 4,
+  using their existing Steam prefixes and normal launch executables. Start
+  Steam and the Frame SteamVR session and connect the headset first. These
+  commands bypass saved Steam launch options, including Monado overrides.
+  Forefront retains Steam's default `-controlscheme openxr` arguments.
+  Add `--dry-run` to inspect the command without starting the game.
+  Both commands inherit Steam's video authorization token and repair the
+  active session's OpenVR registry after Home Manager activations.
 - `stop-steamvr` stops the native runtime, restores the exact previous OpenVR
   registry symlink/file, and leaves the lighthouses powered on.
 - `journalctl --user -u steamvr-native` and Steam's `logs/vrserver.txt` /

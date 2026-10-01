@@ -1,4 +1,4 @@
-"""Launch VRChat's normal protected launcher through Proton, bypassing saved Steam options."""
+"""Launch a game through Proton and SteamVR, bypassing saved Steam options."""
 import argparse
 import json
 import os
@@ -8,10 +8,15 @@ import shlex
 import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--game", choices=("vrchat", "forefront"), default="vrchat")
 parser.add_argument("--dry-run", action="store_true")
 args, game_args = parser.parse_known_args()
+appid, title, executable, default_args = {
+    "vrchat": ("438100", "VRChat", "launch.exe", []),
+    "forefront": ("2981220", "Forefront", "Forefront.exe", ["-controlscheme", "openxr"]),
+}[args.game]
 steam = Path.home() / ".local/share/Steam"
-game = steam / "steamapps/common/VRChat"
+game = steam / "steamapps/common" / title
 runtime = steam / "steamapps/common/SteamVR"
 env = os.environ.copy()
 steam_env = None
@@ -24,7 +29,7 @@ for proc in Path("/proc").iterdir():
     except (OSError, UnicodeError):
         pass
 if steam_env is None:
-    sys.exit("Start Steam before launching VRChat.")
+    sys.exit(f"Start Steam before launching {title}.")
 # Steam sets this codec authorization on child processes, not on its own
 # environment. External Proton launches need it too. Read it from a helper
 # belonging to this Steam instance, without saving or displaying the token.
@@ -57,12 +62,12 @@ for tool in tools:
 if proton is None:
     sys.exit("Cannot find the configured GE-Proton-rtsp tool in the running Steam environment.")
 entry = steam / "steamapps/common/SteamLinuxRuntime_4/_v2-entry-point"
-for path in (proton, entry, game / "launch.exe", runtime / "steamxr_linux64.json"):
+for path in (proton, entry, game / executable, runtime / "steamxr_linux64.json"):
     if not path.is_file():
         sys.exit(f"Missing required file: {path}")
-prefix = steam / "steamapps/compatdata/438100"
+prefix = steam / "steamapps/compatdata" / appid
 if not (prefix / "pfx").is_dir():
-    sys.exit("Missing existing VRChat Proton prefix; launch/install VRChat normally first.")
+    sys.exit(f"Missing existing {title} Proton prefix; launch/install {title} normally first.")
 for key in list(env):
     if key.startswith("XRIZER_") or key in ("XR_RUNTIME_JSON", "VR_OVERRIDE", "VR_PATHREG_OVERRIDE", "OXR_PARALLEL_VIEWS", "RUST_LOG", "PRESSURE_VESSEL_FILESYSTEMS_RW"):
         env.pop(key)
@@ -71,8 +76,8 @@ for key in ("PROTON_EAC_RUNTIME", "PROTON_BATTLEYE_RUNTIME"):
     if key in steam_env:
         env[key] = steam_env[key]
 env.update({
-    "SteamAppId": "438100", "SteamGameId": "438100", "SteamOverlayGameId": "438100",
-    "STEAM_COMPAT_APP_ID": "438100",
+    "SteamAppId": appid, "SteamGameId": appid, "SteamOverlayGameId": appid,
+    "STEAM_COMPAT_APP_ID": appid,
     "STEAM_COMPAT_CLIENT_INSTALL_PATH": str(steam),
     "STEAM_COMPAT_DATA_PATH": str(prefix),
     "STEAM_COMPAT_INSTALL_PATH": str(game),
@@ -83,7 +88,7 @@ env.update({
     "XR_RUNTIME_JSON": str(runtime / "steamxr_linux64.json"),
     "PROTON_LOG": "1",
 })
-command = ["steam-run", str(entry), "--verb=waitforexitandrun", "--", str(proton), "waitforexitandrun", str(game / "launch.exe"), *game_args]
+command = ["steam-run", str(entry), "--verb=waitforexitandrun", "--", str(proton), "waitforexitandrun", str(game / executable), *default_args, *game_args]
 if args.dry_run:
     print(shlex.join(command))
     print("OpenVR:", env["VR_OVERRIDE"])
