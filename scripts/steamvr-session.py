@@ -45,6 +45,16 @@ selected = dict(original, runtime=[str(runtime)])
 frame_session = os.environ.get("STEAMVR_FRAME_SESSION") == "1"
 if not frame_session:
     subprocess.run(["systemctl", "--user", "start", "vr-lighthouses.service"], check=True)
+settings = steam / "config/steamvr.vrsettings"
+original_driver = None
+had_driver = False
+if frame_session:
+    config = json.loads(settings.read_text()) if settings.exists() else {}
+    section = config.setdefault("steamvr", {})
+    had_driver = "forcedDriver" in section
+    original_driver = section.get("forcedDriver")
+    section["forcedDriver"] = "vrlink"
+    settings.write_text(json.dumps(config, indent=2) + "\n")
 # Same-directory rename retains the exact original symlink or regular file.
 temp = registry.with_name("openvrpaths.vrpath.steamvr-new")
 temp.write_text(json.dumps(selected, indent=2) + "\n")
@@ -97,6 +107,15 @@ finally:
     deadline = time.monotonic() + 10
     while (processes("vrserver") or processes("vrcompositor")) and time.monotonic() < deadline:
         time.sleep(0.2)
+    if frame_session:
+        config = json.loads(settings.read_text())
+        section = config.setdefault("steamvr", {})
+        if section.get("forcedDriver") == "vrlink":
+            if had_driver:
+                section["forcedDriver"] = original_driver
+            else:
+                section.pop("forcedDriver", None)
+            settings.write_text(json.dumps(config, indent=2) + "\n")
     try:
         current = json.loads(registry.read_text())
     except (OSError, ValueError):
