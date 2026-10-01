@@ -270,6 +270,16 @@ in
 
   networking.hostName = "sayu";
   networking.networkmanager.enable = true;
+  # Steam creates a system-wide NetworkManager profile for the Frame USB adapter.
+  # Its noninteractive request cannot prompt through a desktop polkit agent.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.NetworkManager.settings.modify.system" &&
+          subject.user == "s") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
   networking.interfaces.enp7s0.wakeOnLan.enable = true;
 
   fileSystems = {
@@ -951,6 +961,11 @@ in
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
   networking.firewall.allowedUDPPorts = [ 7778 ]; # FPSloppa server
+  # Dedicated Frame dongle (USB port-derived interface name on sayu).
+  networking.firewall.interfaces.wlp14s0u4 = {
+    allowedTCPPorts = [ 27036 27037 ];
+    allowedUDPPorts = [ 27031 27036 10400 10401 ];
+  };
   # Steam Frame streaming over the home LAN (including broadcast discovery).
   networking.firewall.extraCommands = ''
     iptables -I nixos-fw 1 -i enp7s0 -s 192.168.1.0/24 -p tcp -m multiport --dports 27036,27037 -j nixos-fw-accept
