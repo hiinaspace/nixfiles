@@ -270,6 +270,21 @@ in
 
   networking.hostName = "sayu";
   networking.networkmanager.enable = true;
+  # The Frame dongle needs the local regulatory domain to discover its 6 GHz link.
+  systemd.services.wifi-regulatory-domain = {
+    description = "Set the Wi-Fi regulatory domain for sayu in the United States";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+    before = [ "NetworkManager.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.kmod}/bin/modprobe cfg80211
+      ${pkgs.iw}/bin/iw reg set US
+    '';
+  };
   # Steam creates a system-wide NetworkManager profile for the Frame USB adapter.
   # Its noninteractive request cannot prompt through a desktop polkit agent.
   security.polkit.extraConfig = ''
