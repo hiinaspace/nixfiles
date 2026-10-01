@@ -1,5 +1,6 @@
 """Launch VRChat's normal protected launcher through Proton, bypassing saved Steam options."""
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -92,5 +93,19 @@ if args.dry_run:
     sys.exit(0)
 if not any((p / "comm").read_text().strip() == "vrserver" for p in Path("/proc").iterdir() if p.name.isdigit() and (p / "comm").exists()):
     sys.exit("Start the Frame SteamVR session and connect the headset first.")
+# Proton's native OpenVR bridge also consults the host registry. A Home
+# Manager activation can replace our session's temporary selection with the
+# default XRizer symlink while SteamVR remains running. Reassert the session
+# selection by replacing the link, retaining its original restoration backup.
+registry = Path.home() / ".config/openvr/openvrpaths.vrpath"
+selection = json.loads(registry.read_text())
+if selection.get("runtime") != [str(runtime)]:
+    backup = registry.with_name("openvrpaths.vrpath.before-steamvr")
+    if not (backup.exists() or backup.is_symlink()):
+        sys.exit("SteamVR session registry backup is missing; restart the Frame SteamVR session.")
+    selection["runtime"] = [str(runtime)]
+    temporary = registry.with_name("openvrpaths.vrpath.frame-new")
+    temporary.write_text(json.dumps(selection, indent=2) + "\n")
+    os.replace(temporary, registry)
 os.chdir(game)
 os.execvpe(command[0], command, env)
