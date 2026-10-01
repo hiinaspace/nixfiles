@@ -977,7 +977,7 @@ in
   # networking.firewall.allowedTCPPorts = [ ... ];
   networking.firewall.allowedUDPPorts = [ 7778 ]; # FPSloppa server
   # Dedicated Frame dongle (USB port-derived interface name on sayu).
-  networking.firewall.interfaces.wlp14s0u4 = {
+  networking.firewall.interfaces.wlp116s0f4u1 = {
     allowedTCPPorts = [ 27036 27037 ];
     allowedUDPPorts = [ 27031 27036 10400 10401 ];
   };
