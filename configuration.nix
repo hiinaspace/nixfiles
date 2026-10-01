@@ -400,7 +400,9 @@ in
   '';
 
   # https://lvra.gitlab.io/docs/hardware/#applying-a-kernel-patch-for-vive-pro-2-bigscreen-beyond-pimax
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Steam Frame USB wireless adapter needs rtw89_8852cu from a newer kernel.
+  # The current flake pin selects Linux 7.2.3; keep the old boot generation for rollback.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   #boot.kernelPatches = [
   #  {
   #    name = "bigscreen beyond";
