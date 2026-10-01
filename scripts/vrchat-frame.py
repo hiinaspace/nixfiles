@@ -18,11 +18,32 @@ for proc in Path("/proc").iterdir():
     try:
         if proc.stat().st_uid == os.getuid() and (proc / "comm").read_text().strip() == "steam":
             steam_env = dict(x.decode().split("=", 1) for x in (proc / "environ").read_bytes().split(b"\0") if b"=" in x)
+            steam_pid = proc.name
             break
     except (OSError, UnicodeError):
         pass
 if steam_env is None:
     sys.exit("Start Steam before launching VRChat.")
+# Steam sets this codec authorization on child processes, not on its own
+# environment. External Proton launches need it too. Read it from a helper
+# belonging to this Steam instance, without saving or displaying the token.
+video_token = steam_env.get("STEAMVIDEOTOKEN")
+if not video_token:
+    for helper in Path("/proc").iterdir():
+        try:
+            if helper.stat().st_uid != os.getuid() or (helper / "exe").resolve() != steam / "ubuntu12_64/steamwebhelper":
+                continue
+            helper_env = dict(x.decode().split("=", 1) for x in (helper / "environ").read_bytes().split(b"\0") if b"=" in x)
+            token = helper_env.get("STEAMVIDEOTOKEN", "")
+            if token.startswith(steam_pid + "\n"):
+                video_token = token
+                break
+        except (OSError, UnicodeError):
+            pass
+if video_token:
+    env["STEAMVIDEOTOKEN"] = video_token
+else:
+    print("Warning: Steam has not supplied a video token; H.264 playback may fail. Run steam steam://unlockh264/ and retry.", file=sys.stderr)
 tools = steam_env.get("STEAM_EXTRA_COMPAT_TOOLS_PATHS", "").split(":")
 proton = None
 for tool in tools:
@@ -67,6 +88,7 @@ if args.dry_run:
     print("OpenVR:", env["VR_OVERRIDE"])
     print("OpenXR:", env["XR_RUNTIME_JSON"])
     print("Prefix:", prefix)
+    print("Steam video token:", "available" if video_token else "missing")
     sys.exit(0)
 if not any((p / "comm").read_text().strip() == "vrserver" for p in Path("/proc").iterdir() if p.name.isdigit() and (p / "comm").exists()):
     sys.exit("Start the Frame SteamVR session and connect the headset first.")
