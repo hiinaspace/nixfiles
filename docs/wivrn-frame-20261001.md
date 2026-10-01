@@ -945,3 +945,37 @@ bitrate/resolution/90 Hz. Use recovered shards, incomplete frames, display gaps
 and audio glitches as outcomes. Hardware/driver tuning is not proven exhausted.
 The existing diagnostics patches are optional; they are applied in the local
 WiVRn source override, not automatically to the pinned upstream package.
+
+### Wired Beyond / Monado restoration after checkpoint
+
+The user attempted `start-vr` and found a conflict. Three persistent Frame-test
+drop-ins blocked `monado.service`, `monado.socket`, and `wayvr-debug.service`
+with `ConditionPathExists=/run/user/1000/steamvr-native/allow-wired-runtime`.
+That absent marker caused skipped startups. Archived only those three guards
+under `diagnostics/wired-runtime-restore-20261001`, then reloaded user systemd.
+OpenVR was already restored to the Home Manager XRizer symlink, and OpenXR
+manager environment selected Monado; no registry rewrite was needed.
+
+With the guards removed, Monado crashed repeatedly in `driver_lighthouse.so`
+while setting up the first Index controller. Installed 2.18.2 driver SHA256
+`8825963b008f1ebbb0099352a8dfbf7dc8edf2ea5b734b5f167ad37fadeef8b1`
+differs from saved 2.18.1 driver
+`9770bead3194f17c3f2031b2f8f5f37835807693c2a24f8241a0757ef1cf477b`.
+Setting Monado's `STEAMVR_PATH` to the isolated 2.18.1 runtime fixed startup:
+`start-vr` returned zero and detected the Beyond HMD and both Index controllers.
+Monado socket/service, WayVR and vr-session.target remain active. WayVR reached
+OpenXR and reported IPD; visual headset confirmation is not claimed here.
+
+Persistent local override:
+`/home/s/.config/systemd/user/monado.service.d/lighthouse-version-test.conf`:
+
+```ini
+[Service]
+Environment=STEAMVR_PATH=/home/s/.cache/wivrn-frame/steamvr-version-test/steamvr-2.18.1
+```
+
+This survives reboot but relies on retained local runtime files. It does not
+change the installed SteamVR beta or the declarative default path. Remove this
+override and reload user systemd to retest a future fixed Lighthouse driver.
+Do not recreate the three Frame guards without restoring them at experiment
+end. Evidence includes the service journals from 17:23–17:25 on this date.
