@@ -29,6 +29,11 @@ let
       exec steam-run "$@"
     '';
   };
+  vrchatFrame = pkgs.writeShellApplication {
+    name = "vrchat-frame";
+    runtimeInputs = [ pkgs.python3 pkgs.steam-run ];
+    text = ''exec python3 ${./scripts/vrchat-frame.py} "$@"'';
+  };
 in {
   # Standard SteamVR capability, reapplied on rebuild after SteamVR updates.
   system.activationScripts.steamvrCompositorCapability.text = ''
@@ -38,7 +43,7 @@ in {
     fi
   '';
   home-manager.users.s = {
-    home.packages = [ start stop run ];
+    home.packages = [ start stop run vrchatFrame ];
     systemd.user.services.steamvr-native = {
       Unit = {
         Description = "Native SteamVR with temporary OpenVR selection";

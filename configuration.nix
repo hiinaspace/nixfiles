@@ -949,6 +949,11 @@ in
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
   networking.firewall.allowedUDPPorts = [ 7778 ]; # FPSloppa server
+  # Steam Frame streaming over the home LAN (including broadcast discovery).
+  networking.firewall.extraCommands = ''
+    iptables -I nixos-fw 1 -i enp7s0 -s 192.168.1.0/24 -p tcp -m multiport --dports 27036,27037 -j nixos-fw-accept
+    iptables -I nixos-fw 1 -i enp7s0 -s 192.168.1.0/24 -p udp -m multiport --dports 27031,27036,10400,10401 -j nixos-fw-accept
+  '';
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 

@@ -42,7 +42,9 @@ if not os.environ.get("WAYLAND_DISPLAY"):
     sys.exit("WAYLAND_DISPLAY missing; launch from the graphical session.")
 original = json.loads(registry.read_text())
 selected = dict(original, runtime=[str(runtime)])
-subprocess.run(["systemctl", "--user", "start", "vr-lighthouses.service"], check=True)
+frame_session = os.environ.get("STEAMVR_FRAME_SESSION") == "1"
+if not frame_session:
+    subprocess.run(["systemctl", "--user", "start", "vr-lighthouses.service"], check=True)
 # Same-directory rename retains the exact original symlink or regular file.
 temp = registry.with_name("openvrpaths.vrpath.steamvr-new")
 temp.write_text(json.dumps(selected, indent=2) + "\n")
@@ -103,7 +105,7 @@ finally:
         print(f"SteamVR has not stopped; retain native selection and backup at {backup}.", file=sys.stderr)
     elif current.get("runtime") == [str(runtime)]:
         os.replace(backup, registry)
-        print("Restored previous OpenVR selection; lighthouses remain on.", flush=True)
+        print("Restored previous OpenVR selection.", flush=True)
     elif current == original:
         # Home Manager may have installed a new generation's symlink with the
         # same contents. Keep its current link, retiring only our redundant one.
