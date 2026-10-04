@@ -1,0 +1,106 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -616,9 +616,9 @@
+     SearchTxtInput(String),
+     Shift(bool),
+     Ctrl(bool),
+-    DropBookmark(usize, Point),
++    DropBookmark(String, Point),
+     DeleteBookmark(usize),
+-    HandleZones(usize, Vec<(Id, iced::Rectangle)>),
++    HandleZones(String, Vec<(Id, iced::Rectangle)>),
+     NextImage(i64),
+     Scrolled(scrollable::Viewport),
+     PositionInfo(Pos, Rectangle, Rectangle),
+@@ -1473,9 +1473,9 @@
+                     }
+                 }
+             },
+-            Message::DropBookmark(idx, cursor_pos) => {
++            Message::DropBookmark(path, cursor_pos) => {
+                 return iced_drop::zones_on_point(
+-                    move |zones| Message::HandleZones(idx, zones),
++                    move |zones| Message::HandleZones(path.clone(), zones),
+                     cursor_pos, None, None,
+                 );
+             }
+@@ -1511,7 +1511,7 @@
+                 self.update_scroll(0.0);
+                 return self.update(Message::LoadDir);
+             },
+-            Message::HandleZones(idx, zones) => {
++            Message::HandleZones(path, zones) => {
+                 if zones.len() > 0 {
+                     let targets: Vec<_> = self.conf.bookmarks.iter().enumerate().filter_map(|(i, bm)| {
+                         if zones[0].0 == bm.id.clone().into() {
+@@ -1523,7 +1523,7 @@
+                     } else if zones[0].0 == Id::new("bookmarks") {
+                         Some(-1)
+                     } else { None };
+-                    self.add_bookmark(idx, target);
++                    self.add_bookmark(&path, target);
+                 }
+             }
+             Message::Init((fichan, inochan, search_res, more_files)) => {
+@@ -2575,11 +2575,13 @@
+         }));
+         let clickable = match (self.isdir(), self.sel) {
+             (true, true) => {
+-                let dr = iced_drop::droppable(row).on_drop(move |point,_| Message::DropBookmark(idx, point));
++                let path = self.path.clone();
++                let dr = iced_drop::droppable(row).on_drop(move |point,_| Message::DropBookmark(path.clone(), point));
+                 mouse_area(container(dr).height(ROW_HEIGHT).width(Length::Fill).style(style::get_sel_theme()))
+             },
+             (true, false) => {
+-                let dr = iced_drop::droppable(row).on_drop(move |point,_| Message::DropBookmark(idx, point));
++                let path = self.path.clone();
++                let dr = iced_drop::droppable(row).on_drop(move |point,_| Message::DropBookmark(path.clone(), point));
+                 mouse_area(container(dr).height(ROW_HEIGHT).width(Length::Fill))
+             },
+             (false, true) => {
+@@ -2624,11 +2626,13 @@
+         let idx = self.items_idx;
+         let clickable = match (self.isdir(), self.sel) {
+             (true, true) => {
+-                let dr = iced_drop::droppable(col).on_drop(move |point,_| Message::DropBookmark(idx, point));
++                let path = self.path.clone();
++                let dr = iced_drop::droppable(col).on_drop(move |point,_| Message::DropBookmark(path.clone(), point));
+                 mouse_area(container(dr).style(style::get_sel_theme()).padding(PAD))
+             },
+             (true, false) => {
+-                let dr = iced_drop::droppable(col).on_drop(move |point,_| Message::DropBookmark(idx, point));
++                let path = self.path.clone();
++                let dr = iced_drop::droppable(col).on_drop(move |point,_| Message::DropBookmark(path.clone(), point));
+                 mouse_area(container(dr).padding(PAD))
+             },
+             (false, true) => {
+@@ -3451,21 +3455,15 @@
+         self.conf.update(true);
+     }
+ 
+-    fn add_bookmark(self: &mut Self, dragged: usize, target: Option<i32>) {
+-        let item = &self.items[dragged];
+-        let label = item.path.rsplitn(2,'/').next().unwrap();
+-        match target {
+-            Some(i) if i >= 0 => {
+-                // TODO: multi-dir bookmark?
+-                self.conf.bookmarks.push(Bookmark::new(label, item.path.as_str()));
+-                self.conf.update(true);
+-            },
+-            Some(_) => {
+-                self.conf.bookmarks.push(Bookmark::new(label, item.path.as_str()));
+-                self.conf.update(true);
+-            },
+-            None => {},
++    fn add_bookmark(self: &mut Self, path: &str, target: Option<i32>) {
++        // A mouse release can also navigate before drop-zone discovery finishes.
++        // Use the source path captured by the widget, never the new list's index.
++        if target.is_none() {
++            return;
+         }
++        let label = path.rsplitn(2, '/').next().unwrap();
++        self.conf.bookmarks.push(Bookmark::new(label, path));
++        self.conf.update(true);
+     }
+ 
+     fn exit(self: &mut Self) {

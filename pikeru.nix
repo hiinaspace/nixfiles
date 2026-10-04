@@ -44,6 +44,10 @@ rustPlatform.buildRustPackage {
   pname = "pikeru";
   inherit version src;
 
+  # Directory clicks can leave a delayed bookmark-drop event after navigation.
+  # Capture the source path rather than indexing the newly loaded file list.
+  patches = [ ./patches/pikeru-directory-drop.patch ];
+
   cargoLock = {
     lockFile = "${src}/Cargo.lock";
   };
