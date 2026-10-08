@@ -26,6 +26,21 @@
     codex-cli-nix.url = "github:sadjow/codex-cli-nix";
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
 
+    # https://github.com/sadjow/claude-code-nix
+    # Claude Code CLI, tracking Anthropic's native releases (updated hourly).
+    claude-code-nix = {
+      url = "github:sadjow/claude-code-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # https://github.com/danielbodart/claude-desktop
+    # Official Claude Desktop .deb from Anthropic's signed apt repo
+    # (downloads.claude.ai), hash-pinned. Built locally; the flake's cachix
+    # substituter is deliberately not trusted. Bump: nix flake update claude-desktop
+    claude-desktop = {
+      url = "github:danielbodart/claude-desktop";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Source-only input: pinned in flake.lock, packaged locally in ./animutools.nix.
     # Local edits to the checkout in ~/code/animutools are NOT picked up here —
     # push to github, then `nix flake update animutools-src` + rebuild.
@@ -48,7 +63,7 @@
     impermanence.url = "github:nix-community/impermanence";
   };
 
-  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, wivrn-src, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix, codex-desktop-linux }:
+  outputs = inputs @ { self, nixpkgs, nixpkgs-xr, wivrn-src, comfyui-nix, pikeru-src, animutools-src, home-manager, sops-nix, impermanence, codex-cli-nix, codex-desktop-linux, claude-code-nix, claude-desktop }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -90,6 +105,13 @@
             services.monado.package = patchedMonado;
           })
           nixpkgs-xr.nixosModules.nixpkgs-xr
+          claude-desktop.nixosModules.default
+          ({ ... }: {
+            # Claude Desktop (chat, Code tab, Remote Control) plus the claude CLI
+            # on the system PATH, so SSH sessions from other hosts find it too.
+            programs.claude-desktop.enable = true;
+            environment.systemPackages = [ claude-code-nix.packages.${system}.default ];
+          })
           comfyui-nix.nixosModules.default
           ./configuration.nix
           sops-nix.nixosModules.sops
