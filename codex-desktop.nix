@@ -1,27 +1,7 @@
 { config, pkgs, inputs, ... }:
 let
   cli = inputs.codex-cli-nix.packages.${pkgs.system}.default;
-  desktopBase = inputs.codex-desktop-linux.packages.${pkgs.system}.codex-desktop-remote-mobile-control;
-  # The upstream Nix flake currently lags the official Debian repository.
-  # Keep its NixOS/runtime wrapper, but consume the official package that is
-  # already deployed on natto and exposes GPT-6 Luna in Desktop.
-  officialDesktopDeb = pkgs.fetchurl {
-    name = "chatgpt_26.917.51856_amd64.deb";
-    url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.917.51856_amd64.deb";
-    hash = "sha256-SiPHe2+yfM9l+K+X7YxKnd2QHNduzsSUzoOFbw+TbYw=";
-  };
-  desktop = desktopBase.overrideAttrs (old: {
-    __intentionallyOverridingVersion = true;
-    version = "26.917.51856";
-    installPhase = builtins.replaceStrings
-      [ (toString old.passthru.upstreamDeb) ]
-      [ (toString officialDesktopDeb) ]
-      old.installPhase;
-    passthru = old.passthru // {
-      upstreamDeb = officialDesktopDeb;
-      upstreamVersion = "26.917.51856";
-    };
-  });
+  desktop = inputs.codex-desktop-linux.packages.${pkgs.system}.codex-desktop-remote-mobile-control;
   socket = "${config.home.homeDirectory}/.codex/app-server-control/app-server-control.sock";
   python = pkgs.python3.withPackages (p: [ p.websockets ]);
   bridge = pkgs.writeShellScriptBin "codex-desktop-bridge" ''
