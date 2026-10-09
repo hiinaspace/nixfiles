@@ -110,6 +110,17 @@
             # Claude Desktop (chat, Code tab, Remote Control) plus the claude CLI
             # on the system PATH, so SSH sessions from other hosts find it too.
             programs.claude-desktop.enable = true;
+            # Chromium picks its safeStorage backend from XDG_CURRENT_DESKTOP;
+            # "niri" is unrecognised, so it falls back to basic_text and the app
+            # reports no keyring (sign-in and env vars never persist). Force the
+            # Secret Service backend; gnome-keyring's login collection serves it.
+            programs.claude-desktop.package =
+              claude-desktop.packages.${system}.claude-desktop.overrideAttrs (old: {
+                postFixup = old.postFixup + ''
+                  wrapProgram "$out/bin/claude-desktop" \
+                    --add-flags "--password-store=gnome-libsecret"
+                '';
+              });
             environment.systemPackages = [ claude-code-nix.packages.${system}.default ];
           })
           comfyui-nix.nixosModules.default
