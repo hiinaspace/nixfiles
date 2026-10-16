@@ -1,0 +1,175 @@
+From 094706f6594a1f49cd4153262c2e5b49cc190d7b Mon Sep 17 00:00:00 2001
+From: hiina <hiina@hiina.space>
+Date: Thu, 15 Oct 2026 18:14:35 -0600
+Subject: [PATCH] Add rate-limited [SVDBG] logging for Sprint Vector render
+ debugging
+
+---
+ src/compositor.rs               | 19 +++++++++++++++++++
+ src/graphics_backends/vulkan.rs |  9 +++++++++
+ src/lib.rs                      | 11 +++++++++++
+ src/overlay.rs                  | 14 ++++++++++++++
+ src/system.rs                   | 18 ++++++++++++++++--
+ 5 files changed, 69 insertions(+), 2 deletions(-)
+
+diff --git a/src/compositor.rs b/src/compositor.rs
+index 65b1057..dbf0f2e 100644
+--- a/src/compositor.rs
++++ b/src/compositor.rs
+@@ -745,12 +745,19 @@ impl vr::IVRCompositor029_Interface for Compositor {
+ 
+         // Superhot passes crazy bounds on startup.
+         if !bounds.valid() {
++            crate::sv_dbg!("submit {eye:?} rejected: invalid bounds {bounds:?}");
+             return vr::EVRCompositorError::InvalidBounds;
+         }
+ 
+         let Some(texture) = (unsafe { texture.as_ref() }) else {
+             return vr::EVRCompositorError::InvalidTexture;
+         };
++        crate::sv_dbg!(
++            "submit {eye:?} type={:?} colorspace={:?} bounds={bounds:?} flags={:#x}",
++            texture.eType,
++            texture.eColorSpace,
++            submit_flags.0
++        );
+ 
+         if !self.focused.is_completed() {
+             return vr::EVRCompositorError::DoNotHaveFocus;
+@@ -1336,6 +1343,18 @@ impl<G: GraphicsBackend> FrameController<G> {
+                         std::mem::swap(&mut fov.angle_up, &mut fov.angle_down);
+                     }
+ 
++                    crate::sv_dbg!(
++                        "proj view {eye_index}: fov(l,r,u,d deg)=({:.2},{:.2},{:.2},{:.2}) pos={:?} rot={:?} view_flags={flags:?} rect={extent:?} flip={flip_vertically} swapchain={}x{} origin={:?}",
++                        fov.angle_left.to_degrees(),
++                        fov.angle_right.to_degrees(),
++                        fov.angle_up.to_degrees(),
++                        fov.angle_down.to_degrees(),
++                        pose.position,
++                        pose.orientation,
++                        swapchain_data.info.width,
++                        swapchain_data.info.height,
++                        session_data.current_origin
++                    );
+                     let sub_image = xr::SwapchainSubImage::new()
+                         .swapchain(&swapchain_data.swapchain)
+                         .image_array_index(eye_index as u32)
+diff --git a/src/graphics_backends/vulkan.rs b/src/graphics_backends/vulkan.rs
+index 04e2c87..b58c507 100644
+--- a/src/graphics_backends/vulkan.rs
++++ b/src/graphics_backends/vulkan.rs
+@@ -183,6 +183,15 @@ impl GraphicsBackend for VulkanData {
+ 
+         let (extent, offset) = texture_extent_from_bounds(texture, bounds);
+         log::trace!("{eye:?} extent: {extent:?} | bounds: {bounds:?}");
++        crate::sv_dbg!(
++            "vk copy {eye:?}: tex {}x{} fmt={} samples={} array={:?} -> extent={extent:?} offset={offset:?} flags={:#x}",
++            texture.m_nWidth,
++            texture.m_nHeight,
++            texture.m_nFormat,
++            texture.m_nSampleCount,
++            array_data.map(|a| (a.m_unArrayIndex, a.m_unArraySize)),
++            submit_flags.0
++        );
+ 
+         self.record_commands(buf, || unsafe {
+             // transition swapchain image to TRANSFER_DST
+diff --git a/src/lib.rs b/src/lib.rs
+index eb8ab79..9e1ac84 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -42,6 +42,17 @@ macro_rules! warn_once {
+     }}
+ }
+ use warn_once;
++/// Sprint Vector render debugging: log the first few hits of a call site, then every 900th.
++macro_rules! sv_dbg {
++    ($($tt:tt)*) => {{
++        static HITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++        let n = HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
++        if n < 6 || n % 900 == 0 {
++            log::info!("[SVDBG #{n}] {}", format_args!($($tt)*));
++        }
++    }}
++}
++use sv_dbg;
+ 
+ #[cfg(feature = "tracing")]
+ macro_rules! tracy_span {
+diff --git a/src/overlay.rs b/src/overlay.rs
+index 9ccd11c..6bd58ee 100644
+--- a/src/overlay.rs
++++ b/src/overlay.rs
+@@ -209,6 +209,20 @@ impl OverlayMan {
+             );
+ 
+             trace!("overlay rect: {rect:#?}");
++            crate::sv_dbg!(
++                "overlay layer key={:?} name={:?} kind={} z={} width={} rect={rect:?} bounds={:?} transform={:?}",
++                overlay.key,
++                overlay.name,
++                match overlay.kind {
++                    OverlayKind::Quad => "quad",
++                    OverlayKind::Curved { .. } => "curved",
++                    OverlayKind::Sphere => "sphere",
++                },
++                overlay.z_order,
++                overlay.width,
++                overlay.bounds,
++                overlay.transform
++            );
+ 
+             let pose = overlay
+                 .transform
+diff --git a/src/system.rs b/src/system.rs
+index c12c23e..018fae9 100644
+--- a/src/system.rs
++++ b/src/system.rs
+@@ -212,6 +212,11 @@ impl vr::IVRSystem026_Interface for System {
+         if !height.is_null() {
+             unsafe { *height = views[0].recommended_image_rect_height };
+         }
++        crate::sv_dbg!(
++            "GetRecommendedRenderTargetSize -> {}x{}",
++            views[0].recommended_image_rect_width,
++            views[0].recommended_image_rect_height
++        );
+     }
+     fn GetProjectionMatrix(&self, eye: vr::EVREye, near_z: f32, far_z: f32) -> vr::HmdMatrix44_t {
+         // https://github.com/ValveSoftware/openvr/wiki/IVRSystem::GetProjectionRaw
+@@ -255,6 +260,13 @@ impl vr::IVRSystem026_Interface for System {
+             *bottom = view.fov.angle_up.tan();
+             *top = view.fov.angle_down.tan();
+         }
++        crate::sv_dbg!(
++            "GetProjectionRaw {eye:?} origin={ty:?} -> l={:.4} r={:.4} t={:.4} b={:.4}",
++            view.fov.angle_left.tan(),
++            view.fov.angle_right.tan(),
++            view.fov.angle_down.tan(),
++            view.fov.angle_up.tan()
++        );
+     }
+     fn ComputeDistortion(
+         &self,
+@@ -293,13 +305,15 @@ impl vr::IVRSystem026_Interface for System {
+             let gen_array = |translation, rot_axis: Vec3| {
+                 std::array::from_fn(|i| if i == 3 { translation } else { rot_axis[i] })
+             };
+-            vr::HmdMatrix34_t {
++            let ret = vr::HmdMatrix34_t {
+                 m: [
+                     gen_array(view.pose.position.x, rot.x_axis),
+                     gen_array(view.pose.position.y, rot.y_axis),
+                     gen_array(view.pose.position.z, rot.z_axis),
+                 ],
+-            }
++            };
++            crate::sv_dbg!("GetEyeToHeadTransform {eye:?} -> {:?}", ret.m);
++            ret
+         }
+     }
+     fn GetTimeSinceLastVsync(&self, _: *mut f32, _: *mut u64) -> bool {
+-- 
+2.55.0
+

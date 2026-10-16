@@ -77,6 +77,9 @@
           ./xrizer-skyrimvr-monado.patch
           ./xrizer-standard-pose-components.patch
           ./xrizer-vulkan-device-lost-cleanup.patch
+          # Temporary: rate-limited [SVDBG] render logging for Sprint Vector debugging
+          # (~/code/sprint-vector-net). Remove once the warped-render bug is understood.
+          ./xrizer-sv-debug-logging.patch
         ];
       });
       wivrnOverlay = final: prev: {
