@@ -846,6 +846,12 @@ in
       tree
     ];
     hashedPasswordFile = config.sops.secrets.spassword.path;
+    # cc-0 agent pod (k8s). Full `s` by owner decision 2026-10-14; from= is the
+    # three cluster node IPs (pod egress is SNATed), CC_ORIGIN tags its shells.
+    # Revoke by deleting this line and rebuilding.
+    openssh.authorizedKeys.keys = [
+      ''restrict,pty,from="192.168.1.3,192.168.1.30,192.168.1.31",environment="CC_ORIGIN=1" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL6u+/3LyhjF+tykdzAwnyNvn0aiT0W1AirEXmtCL/rq cc-0@cluster''
+    ];
   };
 
   security.sudo.extraRules = [
@@ -973,6 +979,12 @@ in
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
+  # Keys only, so authorized_keys from=/revocation actually bind (2026-10-14).
+  services.openssh.settings = {
+    PasswordAuthentication = false;
+    KbdInteractiveAuthentication = false;
+    PermitUserEnvironment = "CC_ORIGIN";
+  };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
