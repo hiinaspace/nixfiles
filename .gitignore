@@ -1,0 +1,7 @@
+result
+debug
+trace
+.codex
+dump_survive_config.c
+.local
+*/__pycache__/*

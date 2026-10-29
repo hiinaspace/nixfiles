@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v gitleaks >/dev/null 2>&1; then
+  exec gitleaks "$@"
+fi
+
+if ! command -v nix >/dev/null 2>&1; then
+  echo "gitleaks is not on PATH, and nix is not available to enter the dev shell." >&2
+  exit 127
+fi
+
+exec nix develop --command gitleaks "$@"
