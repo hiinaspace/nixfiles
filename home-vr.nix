@@ -44,13 +44,13 @@ in {
         "vr-lighthouses.service"
         "monado.socket"
         "monado.service"
-        "wayvr-debug.service"
+        "wayvr.service"
       ];
       After = [
         "vr-lighthouses.service"
         "monado.socket"
         "monado.service"
-        "wayvr-debug.service"
+        "wayvr.service"
       ];
     };
   };
@@ -71,9 +71,8 @@ in {
     };
   };
 
-  # The Monado units come from the NixOS module, while WayVR's debug unit is
-  # linked from its checkout. Drop-ins let the session target stop all three
-  # without replacing either source unit.
+  # The Monado units come from the NixOS module. Drop-ins let the session
+  # target stop them without replacing the source units.
   xdg.configFile."systemd/user/monado.service.d/vr-session.conf".text = ''
     [Unit]
     PartOf=vr-session.target
@@ -82,15 +81,35 @@ in {
     [Unit]
     PartOf=vr-session.target
   '';
-  xdg.configFile."systemd/user/wayvr-debug.service.d/vr-session.conf".text = ''
-    [Unit]
-    PartOf=vr-session.target
 
-    [Service]
-    ExecStop=${stop-wayvr}/bin/stop-wayvr
-    SuccessExitStatus=SIGKILL
-    TimeoutStopSec=10s
-  '';
+  # WayVR runs from pkgs.wayvr (overlay it to pin a fork). Machine-specific:
+  # Niri owns wayland-1, and the user manager loses the compositor socket
+  # name across suspend, so name it explicitly.
+  systemd.user.services.wayvr = {
+    Unit = {
+      Description = "WayVR overlay";
+      After = [ "monado.service" ];
+      BindsTo = [ "monado.service" ];
+      Requires = [ "monado.socket" "graphical-session.target" ];
+      PartOf = [ "vr-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${pkgs.wayvr}/bin/wayvr --replace --openxr";
+      ExecStop = "${stop-wayvr}/bin/stop-wayvr";
+      Environment = [
+        "WAYVR_LOGFILE=/dev/null"
+        "RUST_BACKTRACE=1"
+        "WAYLAND_DISPLAY=wayland-1"
+      ];
+      Restart = "on-failure";
+      RestartSec = "2s";
+      # stop-wayvr escalates to SIGKILL after 5s (NVIDIA exit-hang mitigation).
+      SuccessExitStatus = "SIGKILL";
+      TimeoutStopSec = "10s";
+    };
+    Install.WantedBy = [ "monado.service" ];
+  };
 
   # Relocate VRChat's camera photos out of the disposable Proton prefix into
   # ~/Pictures/VRChat so they survive prefix/Steam wipes (and are backed up without

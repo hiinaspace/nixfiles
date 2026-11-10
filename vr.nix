@@ -94,7 +94,7 @@
     serviceConfig.Type = "oneshot";
     script = ''
       ${pkgs.systemd}/bin/systemctl --user --machine=s@.host \
-        stop wayvr-debug.service monado.service || true
+        stop wayvr.service monado.service || true
     '';
   };
 

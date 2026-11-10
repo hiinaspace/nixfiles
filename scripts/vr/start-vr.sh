@@ -48,7 +48,7 @@ if ! systemctl --user is-active --quiet vr-session.target; then
   # Clear a socket-activated instance before the user powers on the
   # controllers. Startup retries leave standby disabled so this does not
   # turn off a controller the old instance already knew about.
-  systemctl --user stop wayvr-debug.service || true
+  systemctl --user stop wayvr.service || true
   systemctl --user stop monado.service monado.socket || true
   remind_about_controllers
 
@@ -72,7 +72,7 @@ for attempt in 1 2 3; do
   echo "Monado detected only $count of 2 Index controllers; restarting the VR clients (attempt $((attempt + 1))/3)."
   notify-send --app-name=start-vr \
     "VR controller retry" "Only $count of 2 controllers detected. Make sure both are powered on." || true
-  systemctl --user stop wayvr-debug.service || true
+  systemctl --user stop wayvr.service || true
   systemctl --user stop monado.service || true
-  systemctl --user start monado.socket monado.service wayvr-debug.service
+  systemctl --user start monado.socket monado.service wayvr.service
 done
